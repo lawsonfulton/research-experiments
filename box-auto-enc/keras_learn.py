@@ -7,7 +7,8 @@ import numpy as np
 
 import keras
 from keras.layers import Input, Dense
-from keras.models import Model
+from keras.models import Model, Sequential
+from keras import regularizers
 
 # TODO make sure nothing is generate out of bounds
 def rand_box(x_bounds, y_bounds, size=2.0):
@@ -30,6 +31,11 @@ def rand_box(x_bounds, y_bounds, size=2.0):
 
     return np.dot(rotMatrix, box.transpose()).transpose() + offset
 
+
+def generate_box_samples(sample_size, x_bounds, y_bounds):
+    return np.array([box_to_vec(rand_box(x_bounds, y_bounds)) for _ in range(sample_size)])
+
+
 def draw_box(box, ax, colour='r', linewidth=None):
     poly = plt.Polygon(box, closed=True, fill=None, edgecolor=colour, linewidth=linewidth)
     ax.add_patch(poly)
@@ -40,9 +46,6 @@ def box_to_vec(box):
 
 def box_from_vec(box_vec):
     return ((box_vec / scale - 0.5) * 20.0).reshape((4,2))
-
-def generate_box_samples(sample_size, x_bounds, y_bounds):
-    return np.array([box_to_vec(rand_box(x_bounds, y_bounds)) for _ in range(sample_size)])
 
 def main():
     start_time = time.time()
@@ -72,37 +75,40 @@ def main():
     
     model_start_time = time.time()
     # this is the size of our encoded representations
-    encoding_dim = 8
+    encoding_dim = 3
+    box_dim = 8
 
     initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.05, seed=None)
 
-    # this is our input placeholder
-    input_vec = Input(shape=(8,)) #TODO try different shapes
-    #encoded = Dense(32, activation='relu')(input_vec)
-    #encoded = Dense(16, activation='relu')(encoded)
+    model = Sequential()
+    # Input
 
-    encoded = Dense(8, activation='relu', kernel_initializer=initializer)(input_vec)
+    model.add(Dense(200, input_shape=(box_dim,), activation='relu', kernel_initializer=initializer))
 
-    #decoded = Dense(16, activation='relu')(encoded)
-    decoded = Dense(8, activation='relu',kernel_initializer=initializer)(encoded)
+    # Encoded layer
+    model.add(Dense(encoding_dim, activation='relu', kernel_initializer=initializer))
+    ##
 
-    autoencoder = Model(input_vec, decoded)
+    model.add(Dense(200, activation='relu', kernel_initializer=initializer))
 
-    #### TODO 0.001 or 0.01???
+    # Output layer
+    model.add(Dense(box_dim, activation='relu', kernel_initializer=initializer))
+
+
     optimizer = keras.optimizers.Adam(lr=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    autoencoder.compile(optimizer=optimizer, loss='mean_squared_error')
+    model.compile(optimizer=optimizer, loss='mean_squared_error')
 
     #train
-    autoencoder.fit(train_data, train_data,
+    model.fit(train_data, train_data,
                 epochs=10,
-                batch_size=1024,
+                batch_size=512, # 512
                 shuffle=True,
                 validation_data=(test_data, test_data))
 
     #show
     # encode and decode some digits
     # note that we take them from the *test* set
-    decoded_boxes = autoencoder.predict(test_data)
+    decoded_boxes = model.predict(test_data)
 
     print("Total model time: ", time.time() - model_start_time)
     print("Total runtime: ", time.time() - start_time)
