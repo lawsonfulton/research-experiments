@@ -1,13 +1,14 @@
 import random
 import math
 import time
+import datetime
 
 import matplotlib.pyplot as plt
 import numpy as np
 
 import keras
 from keras.layers import Input, Dense
-from keras.models import Model, Sequential
+from keras.models import Model, Sequential, load_model
 from keras import regularizers
 
 # TODO make sure nothing is generate out of bounds
@@ -102,12 +103,30 @@ def box_to_vec(box):
 def box_from_vec(box_vec):
     return ((box_vec / scale - 0.5) * 20.0).reshape((4,2))
 
-def main():
-    start_time = time.time()
+def explore_model(path):
+    model = load_model(path)
+
+    decoder_layer = model.get_layer('decoder')
+
+    decoder = Model(decoder_layer)
+
+    print(decoder.predict(np.array([[0,0,0]])))
+
+
     # Setup matplotlib
     x_bounds = [-10, 10]
     y_bounds = [-10, 10]
 
+    fig = plt.figure(figsize=(8, 8))
+    ax = fig.add_subplot(111)
+    ax.set_xlim(x_bounds)
+    ax.set_ylim(y_bounds)
+    ax.set_aspect('equal')
+
+
+def main():
+    start_time = time.time()
+    # Setup matplotlib
     x_bounds = [-10, 10]
     y_bounds = [-10, 10]
 
@@ -118,7 +137,7 @@ def main():
     ax.set_aspect('equal')
 
     # Setup and train the neural net
-    training_sample_size = 5000000
+    training_sample_size = 500000
     test_sample_size = 1000
 
     print("Generating training data...")
@@ -139,28 +158,31 @@ def main():
     model = Sequential()
     # Input
 
+    outer_layer_dim = 400
     #am I just memorizing the domain here?
-    model.add(Dense(200, input_shape=(box_dim,), activation='relu', kernel_initializer=initializer))
+    model.add(Dense(outer_layer_dim, input_shape=(box_dim,), activation='relu', kernel_initializer=initializer, name='encoder'))
 
     # Encoded layer
     model.add(Dense(encoding_dim, activation='relu', kernel_initializer=initializer))
     ##
 
-    model.add(Dense(200, activation='relu', kernel_initializer=initializer))
+    model.add(Dense(outer_layer_dim, activation='relu', kernel_initializer=initializer, name='decoder'))
 
     # Output layer
     model.add(Dense(box_dim, activation='relu', kernel_initializer=initializer))
 
 
     optimizer = keras.optimizers.Adam(lr=0.01, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    model.compile(optimizer=optimizer, loss='mean_squared_error')
+    model.compile(optimizer=optimizer, loss='mean_squared_logarithmic_error')
 
     #train
     model.fit(train_data, train_data,
-                epochs=5,
-                batch_size=1024, # 512
+                epochs=10,
+                batch_size=512,
                 shuffle=True,
                 validation_data=(test_data, test_data))
+
+    model.save('models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5')
 
     #show
     # encode and decode some digits
