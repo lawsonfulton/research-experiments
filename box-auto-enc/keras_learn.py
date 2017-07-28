@@ -45,7 +45,7 @@ def main():
         test_data,
         layer_dims=layer_dims,
         learning_rate=0.01,
-        epochs=3,
+        epochs=8,
         batch_size=2048,
         loss='mean_squared_logarithmic_error',
         saved_model_path=output_path
