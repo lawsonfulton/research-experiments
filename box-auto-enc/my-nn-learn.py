@@ -28,14 +28,42 @@ def draw_box(box, ax, colour='r', linewidth=None):
     poly = plt.Polygon(box, closed=True, fill=None, edgecolor=colour, linewidth=linewidth)
     ax.add_patch(poly)
 
+def draw_boxes_from_samples(ax, box_samples, colour='r', linewidth=None):
+    for b in box_samples:
+        draw_box(box_from_vec(b), ax, colour, linewidth=linewidth)
+
+scale = 1.0
 def box_to_vec(box):
-    return box.flatten() + 11 # TODO Figure out why I need to keep everything positive..
+    return (box.flatten() / 20.0 + 0.5) * scale # normalize
 
 def box_from_vec(box_vec):
-    return (box_vec - 11).reshape((4,2))
+    return ((box_vec / scale - 0.5) * 20.0).reshape((4,2))
 
-def generate_box_samples(sample_size, x_bounds, y_bounds):
-    return np.array([box_to_vec(rand_box(x_bounds, y_bounds)) for _ in range(sample_size)])
+def generate_box_samples_fast(sample_size, x_bounds=[-10,10], y_bounds=[-10,10], size=2.0):
+    """Assumes bounds are of the form x_bounds == y_bounds == [-b, b]"""
+
+    half_size = size / 2.0
+    box = np.array([[-half_size, half_size], [half_size, half_size], [half_size, -half_size], [-half_size, -half_size]]).transpose()
+    bound_buffer = math.sqrt(2 * (size / 2.0) ** 2) # Squares rotate...
+
+    theta = np.random.uniform(0, math.pi * 2, sample_size)
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+
+    offset = np.array([
+        np.random.uniform(x_bounds[0] + bound_buffer, x_bounds[1] - bound_buffer, sample_size),
+        np.random.uniform(y_bounds[0] + bound_buffer, y_bounds[1] - bound_buffer, sample_size)
+    ]).transpose().reshape(-1,2,1)
+
+    rotMatrices = np.array(
+        [[cos_theta, -sin_theta],
+        [sin_theta,  cos_theta]]
+    )   .transpose() # is this fast?
+
+    rotated_boxes = np.dot(rotMatrices, box) + offset
+    normalized_boxes = rotated_boxes / (x_bounds[1] - x_bounds[0]) + 0.5 # See docstring for assumption
+
+    return normalized_boxes.transpose((0,2,1)).reshape(sample_size, 8)
 
 def main():
     # Setup matplotlib
@@ -52,13 +80,13 @@ def main():
     ax.set_aspect('equal')
 
     # Setup and train the neural net
-    training_sample_size = 100000
-    test_sample_size = 1000
+    training_sample_size = 500000
+    test_sample_size = 10
 
     print("Generating training data...")
     # TODO This could be more efficient
-    train_data = generate_box_samples(training_sample_size, x_bounds, y_bounds)
-    test_data = generate_box_samples(test_sample_size, x_bounds, y_bounds)
+    train_data = generate_box_samples_fast(training_sample_size, x_bounds, y_bounds)
+    test_data = generate_box_samples_fast(test_sample_size, x_bounds, y_bounds)
 
     # TODO test data should be from a different part of the plane to make sure we are generalizing
     
@@ -67,29 +95,29 @@ def main():
     # Layer sizes
     vec_size = len(train_data[0])
     assert vec_size == 8
-    layer_widths = [vec_size, 8, vec_size]
+    layer_widths = [vec_size, 200, 3, 200, vec_size]
 
     # Optimization hyperparameters
-    param_scale = 0.1
-    batch_size = 256 # TODO does batch size effect learning rate?
-    num_epochs = 5
+    param_scale = 0.1 #??
+    batch_size = 512 # TODO does batch size effect learning rate?
+    num_epochs = 20
     step_size = 0.01
 
     params = nn.init_params(layer_widths, param_scale)
 
     print("Training")
     params = nn.train(train_data, test_data, layer_widths, step_size, num_epochs, batch_size)
-#     with open("./mnist_auto_enc_params.bin", 'wb') as f:
-#         np.save(f, params)
+    with open("./models/my-nn-model.bin", 'wb') as f:
+        np.save(f, params)
     print("Done.")
 
     # Draw some output
-    for i in range(10):
-        input = test_data[i]
-        output = nn.evaluate_net(input, params)
-        
-        draw_box(box_from_vec(input), ax, 'r', linewidth=5)
-        draw_box(box_from_vec(output), ax, 'b')
+    # Draw some output
+    decoded_boxes = nn.evaluate_net(test_data, params)
+    num_to_show = 15
+
+    draw_boxes_from_samples(ax, test_data, 'r', linewidth=5)
+    draw_boxes_from_samples(ax, decoded_boxes, 'b')
 
     plt.show()
 

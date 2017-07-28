@@ -1,28 +1,35 @@
-"""
-A simple example of an animated plot
-"""
+from matplotlib import pyplot as plt
 import numpy as np
-import matplotlib.pyplot as plt
-import matplotlib.animation as animation
+import mpl_toolkits.mplot3d.axes3d as p3
+from matplotlib import animation
 
-fig, ax = plt.subplots()
+fig = plt.figure()
+ax = p3.Axes3D(fig)
 
-x = np.arange(0, 2*np.pi, 0.01)
-line, = ax.plot(x, np.sin(x))
+def gen(n):
+    phi = 0
+    while phi < 2*np.pi:
+        yield np.array([np.cos(phi), np.sin(phi), phi])
+        phi += 2*np.pi/n
 
+def update(num, data, line):
+    line.set_data(data[:2, :num])
+    line.set_3d_properties(data[2, :num])
 
-def animate(i):
-    line.set_ydata(np.sin(x + i/10.0))  # update the data
-    return line,
+N = 100
+data = np.array(list(gen(N))).T
+line, = ax.plot(data[0, 0:1], data[1, 0:1], data[2, 0:1])
 
+# Setting the axes properties
+ax.set_xlim3d([-1.0, 1.0])
+ax.set_xlabel('X')
 
-# Init only required for blitting to give a clean slate.
-def init():
-    line.set_ydata(np.ma.array(x, mask=True))
-    return line,
+ax.set_ylim3d([-1.0, 1.0])
+ax.set_ylabel('Y')
 
-ani = animation.FuncAnimation(fig, animate, np.arange(1, 200), init_func=init,
-                              interval=25, blit=True)
-ani.save('line.mp4', dpi=80, extra_args=['-vcodec', 'libx264'])
+ax.set_zlim3d([0.0, 10.0])
+ax.set_zlabel('Z')
 
+ani = animation.FuncAnimation(fig, update, N, fargs=(data, line), interval=10000/N, blit=False)
+#ani.save('matplot003.gif', writer='imagemagick')
 plt.show()
