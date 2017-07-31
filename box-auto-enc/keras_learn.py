@@ -2,6 +2,8 @@ import math
 import time
 import datetime
 
+# import matplotlib as mpl
+# mpl.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -22,7 +24,7 @@ def main():
     ax.set_aspect('equal')
 
     # Setup and train the neural net
-    training_sample_size = 1000000
+    training_sample_size = 5000000
     test_sample_size = 1000
 
     print("Generating training data...")
@@ -39,14 +41,14 @@ def main():
     box_dim = 8
 
     output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
-    layer_dims = [box_dim, 20, 20, 20, encoding_dim]
+    layer_dims = [box_dim, 400, encoding_dim]
     model = autoencoder.train_model(
         train_data,
         test_data,
         layer_dims=layer_dims,
         learning_rate=0.01,
         epochs=3,
-        batch_size=512,
+        batch_size=1024,
         loss='mean_squared_logarithmic_error',
         saved_model_path=output_path
     )

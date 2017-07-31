@@ -33,7 +33,7 @@ def get_samples(n_samples, stochastic=True):
 
     # x_centers = np_space(0.0, 1.0 - length / 2.0, n_samples)
     # y_centers = np_space(0.0, 1.0 - length / 2.0, n_samples)
-    centers = np.mesh_grid(x_centers, y_centers)
+    scenters = np.meshgrid(asds)
 
     thetas = np_space(0.0, 2 * math.pi, n_samples)
     
