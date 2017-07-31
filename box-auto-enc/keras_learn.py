@@ -22,7 +22,7 @@ def main():
     ax.set_aspect('equal')
 
     # Setup and train the neural net
-    training_sample_size = 5000000
+    training_sample_size = 1000000
     test_sample_size = 1000
 
     print("Generating training data...")
@@ -39,24 +39,26 @@ def main():
     box_dim = 8
 
     output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
-    layer_dims = [box_dim, 400, encoding_dim]
+    layer_dims = [box_dim, 20, 20, 20, encoding_dim]
     model = autoencoder.train_model(
         train_data,
         test_data,
         layer_dims=layer_dims,
         learning_rate=0.01,
-        epochs=8,
-        batch_size=2048,
+        epochs=3,
+        batch_size=512,
         loss='mean_squared_logarithmic_error',
         saved_model_path=output_path
     )
+    print("Total model time: ", time.time() - model_start_time)
 
     #show
     # encode and decode some digits
     # note that we take them from the *test* set
+    predict_start = time.time()
     decoded_boxes = model.predict(test_data)
-
-    print("Total model time: ", time.time() - model_start_time)
+    print('Predict took: ', time.time() - predict_start)
+    
     print("Total runtime: ", time.time() - start_time)
 
     # Draw some output

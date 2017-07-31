@@ -23,8 +23,8 @@ def train_model(train_data, test_data, layer_dims, learning_rate=0.01, epochs=10
     input_dim = layer_dims[0]
     encoding_dim = layer_dims[-1]
     
-    kernel_initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.05, seed=None)
-    activation = 'relu'
+    kernel_initializer = 'glorot_uniform' #keras.initializers.RandomUniform(minval=0.0, maxval=0.05, seed=None)
+    activation = 'elu'
 
     new_model = True
     if new_model:
