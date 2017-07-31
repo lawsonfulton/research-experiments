@@ -83,7 +83,7 @@ def learn_simple():
     initializer = 'glorot_uniform'
     activation = 'elu'
 
-    initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.01, seed=None)
+    initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.01, seed=5)
     activation = 'relu'
 
     input = Input(shape=(len(train_data[0][0]),))

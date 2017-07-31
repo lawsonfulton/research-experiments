@@ -26,7 +26,8 @@ def train_model(train_data, test_data, layer_dims, learning_rate=0.01, epochs=10
     # kernel_initializer = 'glorot_uniform' #keras.initializers.RandomUniform(minval=0.0, maxval=0.05, seed=None)
     # activation = 'elu'
 
-    kernel_initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.05, seed=None)
+    kernel_initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.01, seed=None)
+    bias_initializer = keras.initializers.Zeros()
     activation = 'relu'
 
     new_model = True
@@ -34,7 +35,7 @@ def train_model(train_data, test_data, layer_dims, learning_rate=0.01, epochs=10
         encoder_input = Input(shape=(input_dim,))
         prev_input = encoder_input
         for dim in layer_dims[1:]:
-            encoded = Dense(dim, activation=activation, kernel_initializer=kernel_initializer, bias_initializer=kernel_initializer)(prev_input)
+            encoded = Dense(dim, activation=activation, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)(prev_input)
             prev_input = encoded
 
         encoder = Model(encoder_input, encoded)
@@ -42,11 +43,11 @@ def train_model(train_data, test_data, layer_dims, learning_rate=0.01, epochs=10
         decoder_input = Input(shape=(encoding_dim,))
         prev_input = decoder_input
         for dim in reversed(layer_dims[0:-1]):
-            decoded = Dense(dim, activation=activation, kernel_initializer=kernel_initializer, bias_initializer=kernel_initializer)(prev_input)
+            decoded = Dense(dim, activation=activation, kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)(prev_input)
             prev_input = decoded
 
         # # Linear final layer
-        # decoded = Dense(layer_dims[0], activation='linear', kernel_initializer=kernel_initializer, bias_initializer=kernel_initializer)(prev_input)
+        # decoded = Dense(layer_dims[0], activation='linear', kernel_initializer=kernel_initializer, bias_initializer=bias_initializer)(prev_input)
         # prev_input = decoded
 
         decoder = Model(decoder_input, decoded)
@@ -70,8 +71,8 @@ def train_model(train_data, test_data, layer_dims, learning_rate=0.01, epochs=10
 
     #TODO should output layer be linear??
 
-    #optimizer = keras.optimizers.Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
-    optimizer = keras.optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004)
+    optimizer = keras.optimizers.Adam(lr=learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0.0)
+    #optimizer = keras.optimizers.Nadam(lr=0.002, beta_1=0.9, beta_2=0.999, epsilon=1e-08, schedule_decay=0.004)
 
 
     autoencoder.compile(optimizer=optimizer, loss=loss)
