@@ -18,6 +18,16 @@ import keras_autoencoder as autoencoder
 def add_noise(samples):
     return samples #+ np.random.normal(0.0, 0.005, (len(samples), len(samples[0])))
 
+def explore_model(path):
+    print("Loading model...")
+    model = load_model(path)
+    print("Done.")
+
+    ##TODO  ~~~~~~
+    encoder = Model(inputs=autoencoder.input, outputs=autoencoder.get_layer('encoded').output)
+
+    return model
+
 def main():
     start_time = time.time()
     # Setup matplotlib
@@ -69,15 +79,16 @@ def main():
     output = Dense(200, activation=activation)(output)
     output = Dense(len(train_data[0]), activation='linear')(output)#'linear',)(output) # First test seems to indicate no change on output with linear
 
-    model = Model(input, output)
+    autoencoder = Model(input, output)
+    encoder = Model(inputs=autoencoder.input, outputs=autoencoder.get_layer('encoded').output)
 
     def contractive_loss(y_pred, y_true):
         lam = 1e-4
         mse = K.mean(K.square(y_true - y_pred), axis=1)
 
-        W = K.variable(value=model.get_layer('encoded').get_weights()[0])  # N x N_hidden
+        W = K.variable(value=autoencoder.get_layer('encoded').get_weights()[0])  # N x N_hidden
         W = K.transpose(W)  # N_hidden x N
-        h = model.get_layer('encoded').output
+        h = autoencoder.get_layer('encoded').output
         dh = h * (1 - h)  # N_batch x N_hidden
 
         # N_batch x N_hidden * N_hidden x 1 = N_batch x 1
@@ -86,19 +97,22 @@ def main():
         return mse + contractive
 
     optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
-    model.compile(
+    autoencoder.compile(
         optimizer=optimizer,
         loss='mean_squared_error'
     )
 
     start = time.time()
-    model.fit(
+
+    autoencoder.fit(
         add_noise(train_data), train_data,
         epochs=50  ,
         batch_size=8192,
         shuffle=True,
         validation_data=(test_data, test_data)
     )
+    output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
+    autoencoder.save(output_path)
 
     # output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
     # layer_dims = [box_dim, 20,  7]
@@ -119,7 +133,7 @@ def main():
     # note that we take them from the *test* set
     predict_start = time.time()
     test_data = add_noise(test_data)
-    decoded_boxes = model.predict(test_data)
+    decoded_boxes = autoencoder.predict(test_data)
     print('Predict took: ', time.time() - predict_start)
     
     print("Total runtime: ", time.time() - start_time)
