@@ -1,7 +1,8 @@
 import math
 
 import matplotlib.pyplot as plt
-import numpy as np
+#import numpy as np
+import autograd.numpy as np
 
 def generate_samples(sample_size=None, x_bounds=[-10,10], y_bounds=[-10,10], size=2.0, thetas=None, offsets=None):
     """Assumes bounds are of the form x_bounds == y_bounds == [-b, b]"""
@@ -37,9 +38,17 @@ def generate_samples(sample_size=None, x_bounds=[-10,10], y_bounds=[-10,10], siz
 
     return normalized_boxes.transpose((0,2,1)).reshape(sample_size, 8)
 
+def explicit_decode(q, size=2.0):
+    """q = (x, y, theta)"""
+    center = q[:2]
+    theta = q[2]
+
+    return generate_samples(thetas=np.array([theta]), offsets=np.array([center]))[0]
+
+
 def draw_box(box, ax, colour='r', linewidth=None):
-    poly = plt.Polygon(box, closed=True, fill=None, edgecolor=colour, linewidth=linewidth)
-    ax.add_patch(poly)
+    poly = plt.Polygon(box, closed=True, fill=None, edgecolor=colour, linewidth=linewidth, facecolor='y')
+    return ax.add_patch(poly)
 
 def draw_from_samples(ax, box_samples, colour='r', linewidth=None):
     for b in box_samples:
