@@ -12,6 +12,7 @@ import keras.backend as K
 from keras.layers import Input, Dense
 from keras.models import Model, Sequential, load_model
 from keras import regularizers
+import tensorflow as tf
 
 import boxes
 #import keras_autoencoder as autoencoder
@@ -70,8 +71,8 @@ def animate(autoencoder, encoder, decoder, output_path='autoencoder.gif'):
     ax.set_aspect('equal')
 
     ax3d = fig.add_subplot(1,2,2, projection='3d')
-    ax3d.set_xlim([0.2,1.0])
-    ax3d.set_ylim([0.2,1.0])
+    ax3d.set_xlim([0,1.0])
+    ax3d.set_ylim([0,1.0])
     ax3d.set_zlim([0,1.0])
 
     n_samples = 100
@@ -104,19 +105,28 @@ def jacobian_output_wrt_input(model): # TODO n = batch_size
     print("Computing jacobian function...")
     n = 1 # Runs on single data point for now
 
-    xs = decoder.input #qs
-    ys = decoder.output#xs
+    qs = model.input #qs
+    xs = model.output#xs
 
-    dysdxs = [tf.gradients(tf.slice(ys,[0,i],[n,1]), xs) for i in range(model.output_shape[-1])] #use tf unpack instead?
-    jacobian_y_wrt_x = tf.stack(dysdxs)
-        
+    dxsdqs = [tf.gradients(tf.slice(xs,[0,i],[n,1]), qs) for i in range(model.output_shape[-1])] #use tf unpack instead?
+    jacobian_x_wrt_q = tf.stack(dxsdqs)
     print("Done.")
-    return jacobian_y_wrt_x
 
-def eval_jacobian(jacobian, xs):
+    #tf_sess = K.get_session()
+    tf_sess = tf.Session()
+    tf_sess.run(tf.initialize_all_variables())
+
+    def eval_jac(q):
+        input_points = np.array([q])
+        evaluated_gradients = tf_sess.run(jacobian_x_wrt_q, feed_dict={qs: input_points})
+        return np.stack([evaluated_gradients[i][0][0] for i in range(len(evaluated_gradients))])
+
+    return eval_jac
+
+def eval_jacobian(jacobian, qs):
     sess = tf.InteractiveSession()
     sess.run(tf.initialize_all_variables())
-    return sess.run(jacobian_x_wrt_q, feed_dict={xs:xs})
+    return sess.run(jacobian, feed_dict={qs:qs})
 
 def explore_model(decoder):
     fig = plt.figure(figsize=(8, 8))

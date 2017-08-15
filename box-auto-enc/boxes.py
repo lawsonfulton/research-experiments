@@ -1,8 +1,9 @@
 import math
 
 import matplotlib.pyplot as plt
-#import numpy as np
-import autograd.numpy as np
+import numpy as np
+# Need to use autograd numpy if we are using autograd for gradients
+#import autograd.numpy as np
 
 def generate_samples(sample_size=None, x_bounds=[-10,10], y_bounds=[-10,10], size=2.0, thetas=None, offsets=None):
     """Assumes bounds are of the form x_bounds == y_bounds == [-b, b]"""
@@ -41,7 +42,7 @@ def generate_samples(sample_size=None, x_bounds=[-10,10], y_bounds=[-10,10], siz
 def explicit_decode(q, size=2.0):
     """q = (x, y, theta)"""
     center = q[:2]
-    theta = q[2]
+    theta = q[2] 
 
     return generate_samples(thetas=np.array([theta]), offsets=np.array([center]))[0]
 

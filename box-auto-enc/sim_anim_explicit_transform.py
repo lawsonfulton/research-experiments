@@ -6,6 +6,7 @@ import scipy.integrate as integrate
 import matplotlib.animation as animation
 
 import boxes
+boxes.np = np
 
 # q = np.array([0, 0, np.pi/4])
 # x = boxes.box_from_vec(boxes.explicit_decode(q))
@@ -74,8 +75,8 @@ class BoxSim:
         q = state[0:3]
         dqdt = state[3:6]
 
-        mass_matrix = self.mass_matrix(q) # M(q)
-        mass_matrix_inv = np.linalg.inv(mass_matrix) # slow?
+        # mass_matrix = self.mass_matrix(q) # M(q)
+        # mass_matrix_inv = np.linalg.inv(mass_matrix) # slow?
 
         #dvdt = mass_matrix_inv * self.jac_x_wrt_q(q) * mass_matrix * self.world_force
         jacxq = self.jac_x_wrt_q(q)
@@ -135,7 +136,7 @@ t0 = time()
 #animate(0)
 t1 = time()
 interval = 1000 * dt - (t1 - t0)
-
+print (interval)
 ani = animation.FuncAnimation(fig, animate, frames=300,
                               interval=interval, blit=True, init_func=init)
 
