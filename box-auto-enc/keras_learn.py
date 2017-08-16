@@ -60,7 +60,7 @@ def load_autoencoder(path):
 
     return autoencoder, encoder, decoder
 
-def animate(autoencoder, encoder, decoder, output_path='autoencoder.gif'):
+def animate(autoencoder, encoder, decoder):
     from mpl_toolkits.mplot3d import Axes3D
     from matplotlib import animation
 
@@ -95,11 +95,12 @@ def animate(autoencoder, encoder, decoder, output_path='autoencoder.gif'):
         line.set_3d_properties(encoded_boxes[:i, 2])
     print("animating")
 
-    anim = animation.FuncAnimation(fig, animate, frames=n_samples, interval=10, blit=False)#True)
+    anim = animation.FuncAnimation(fig, animate, frames=n_samples, interval=1000/25, blit=False)#True)
     print("loading video")
     #anim.to_html5_video()
-    anim.save(output_path, writer='imagemagick')
+    #anim.save(output_path, writer='imagemagick')
     print("done")
+    return anim
 
 def jacobian_output_wrt_input(model): # TODO n = batch_size
     print("Computing jacobian function...")
@@ -197,7 +198,7 @@ def main():
     optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
     autoencoder.compile(
         optimizer=optimizer,
-        loss=custom_loss(autoencoder)#'mean_squared_error'
+        loss='mean_squared_error' #custom_loss(autoencoder)#
     )
 
     start = time.time()

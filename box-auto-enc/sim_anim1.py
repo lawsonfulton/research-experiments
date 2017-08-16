@@ -187,7 +187,7 @@ def simulate():
     interval = 1000/20
     print("Saving")
     ani = animation.FuncAnimation(fig, animate, frames=150,
-                                  interval=interval, blit=True, init_func=init).save('simulation.gif', writer='imagemagick')
+                                  interval=interval, blit=True, init_func=init)#.save('simulation.gif', writer='imagemagick')
 
 
     # save the animation as an mp4.  This requires ffmpeg or mencoder to be
