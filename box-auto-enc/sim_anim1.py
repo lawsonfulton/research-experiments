@@ -23,12 +23,12 @@ class BoxSim:
         self.use_autoencoder = use_autoencoder
 
         self.time_elapsed = 0.0
-        self.world_force = np.array([2.0, 15.8, 0.0, -9.8, 0.0, -9.8, 0.0, -9.8])
+        self.world_force = np.array([0.0, -9.8, 0.0, -9.8, 0.0, -9.8, 0.0, -9.8])
         starting_pos = [0.0, 0.0]
         starting_theta = 0.0
 
         if use_autoencoder:
-            model_path = "models/contractive loss 250 epochs.h5"
+            model_path = "models/11 35AM August 16 2017.h5"
             self.autoencoder, self.encoder, self.decoder = load_autoencoder(model_path)
             #self.jac_x_wrt_q = jacobian_output_wrt_input(self.decoder)
 
@@ -148,7 +148,7 @@ def simulate():
     boxsim = BoxSim(use_autoencoder=use_autoencoder)
     # boxsim.test_jacobian()
     # exit()
-    dt = 1.0 / 2500
+    dt = 1.0 / 1000
 
     #------------------------------------------------------------
     # set up figure and animation
