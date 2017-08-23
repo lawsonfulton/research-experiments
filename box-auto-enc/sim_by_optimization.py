@@ -163,11 +163,11 @@ class BoxSim:
             return 0.5 * np.dot(diff, diff)
 
         q_0 = q
-        res = scipy.optimize.minimize(objective, q_0, method='L-BFGS-B')
+        res = scipy.optimize.minimize(objective, q_0, method='L-BFGS-B', options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
         new_q = res.x
 
         new_state = np.array([*new_q, *new_qv])
-        print(new_state)
+        #print(new_state)
         return new_state
 
 
@@ -183,7 +183,7 @@ def simulate(model_path=None):
     boxsim = BoxSim(use_autoencoder=use_autoencoder, model_path=model_path)
     # boxsim.test_jacobian()
     # exit()
-    dt = 1.0 / 1000
+    dt = 1.0 / 100
 
     #------------------------------------------------------------
     # set up figure and animation
@@ -235,7 +235,7 @@ def simulate(model_path=None):
     interval = 1000/20
     print("Saving")
     ani = animation.FuncAnimation(fig, animate, frames=100,
-                                  interval=interval, blit=True, init_func=init)#.save('simulation.gif', writer='imagemagick')
+                                  interval=interval, blit=True, init_func=init).save('auto_enc_opt2.gif', writer='imagemagick')
 
 
     # save the animation as an mp4.  This requires ffmpeg or mencoder to be
@@ -243,7 +243,7 @@ def simulate(model_path=None):
     # the video can be embedded in html5.  You may need to adjust this for
     # your system: for more information, see
     # http://matplotlib.sourceforge.net/api/animation_api.html
-    #ani.save('double_pendulum.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
+    #ani.save('auto_enc_opt.mp4', fps=30, extra_args=['-vcodec', 'libx264'])
 
     plt.show()
     

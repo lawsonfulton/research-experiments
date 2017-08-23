@@ -5,7 +5,7 @@ import matplotlib.animation as animation
 
 import boxes
 
-use_autoencoder = False
+use_autoencoder = True
 
 if use_autoencoder:
     import numpy as np
@@ -155,7 +155,7 @@ def simulate(model_path=None):
     boxsim = BoxSim(use_autoencoder=use_autoencoder, model_path=model_path)
     # boxsim.test_jacobian()
     # exit()
-    dt = 1.0 / 100
+    dt = 1.0 / 1000
 
     #------------------------------------------------------------
     # set up figure and animation
