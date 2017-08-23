@@ -1,11 +1,12 @@
 import matplotlib.pyplot as plt
 import scipy.integrate as integrate
 from scipy.misc import derivative as numeric_derivative
+import scipy
 import matplotlib.animation as animation
 
 import boxes
 
-use_autoencoder = False
+use_autoencoder = True
 
 if use_autoencoder:
     import numpy as np
@@ -130,17 +131,44 @@ class BoxSim:
         q = state[0:3] # generalized coordinates
         qv = state[3:6] # generalized velocity
 
-        #jacxq = self.jac_x_wrt_q(q) # jacobian of world coords wrt generalized coords at q
-        jacxq = self.numeric_jacobian(q)
-        qa = np.dot(self.world_force, jacxq) # generalized acceleration == generalized forces (mass = 1 everywhere)
-        self.dqdt2 = qa
+        D_q = self.decode_q_to_x(q)
 
-        new_qv = qv + dt * qa
-        new_q = q + dt * qv
+        jacxq = self.numeric_jacobian(q)
+        jacxq_dot_qv = np.dot(jacxq, qv)
+
+        v_star = D_q + dt * jacxq_dot_qv
+
+        ## Old explicity F=ma form
+        # #jacxq = self.jac_x_wrt_q(q) # jacobian of world coords wrt generalized coords at q
+        # jacxq = self.numeric_jacobian(q)
+        # qa = np.dot(self.world_force, jacxq) # generalized acceleration == generalized forces (mass = 1 everywhere)
+        # self.dqdt2 = qa
+
+        # new_qv = qv + dt * qa
+        # new_q = q + dt * qv
+
+        # new_state = np.array([*new_q, *new_qv])
+        # return new_state
+
+        ###
+        # I
+        A = np.dot(jacxq.transpose() , jacxq)
+        b = np.dot(jacxq.transpose(), np.dot(jacxq, qv) + dt * self.world_force)
+        new_qv = scipy.linalg.solve(A, b)
+
+        # II
+        def objective(new_q):
+            D_new_q = self.decode_q_to_x(new_q)
+            diff = D_new_q - v_star
+            return 0.5 * np.dot(diff, diff)
+
+        q_0 = q
+        res = scipy.optimize.minimize(objective, q_0, method='L-BFGS-B')
+        new_q = res.x
 
         new_state = np.array([*new_q, *new_qv])
+        print(new_state)
         return new_state
-
 
 
     def step(self, dt):
@@ -155,36 +183,35 @@ def simulate(model_path=None):
     boxsim = BoxSim(use_autoencoder=use_autoencoder, model_path=model_path)
     # boxsim.test_jacobian()
     # exit()
-    dt = 1.0 / 100
+    dt = 1.0 / 1000
 
     #------------------------------------------------------------
     # set up figure and animation
-    fig = plt.figure(figsize=(12,6))
-    ax = fig.add_subplot(121, aspect='equal', autoscale_on=False,
+    fig = plt.figure(figsize=(6,6))
+    ax = fig.add_subplot(111, aspect='equal', autoscale_on=False,
                          xlim=(-10, 10), ylim=(-10, 10))
     ax.grid()
 
-    from mpl_toolkits.mplot3d.axes3d import Axes3D
-    ax3d = fig.add_subplot(1,2,2, projection='3d')
-    max_d = 1.0
-    ax3d.set_xlim([0,max_d])
-    ax3d.set_ylim([0,max_d])
-    ax3d.set_zlim([0,max_d])
+    # ax3d = fig.add_subplot(1,2,2, projection='3d')
+    max_d = 0.2
+    # ax3d.set_xlim([0,max_d])
+    # ax3d.set_ylim([0,max_d])
+    # ax3d.set_zlim([0,max_d])
     #line, = ax.plot([], [], 'o-', lw=2)
     patch = boxes.draw_box([[0,0],[0,0]], ax)
     points, = ax.plot([], [], 'ro', ms=3)
     time_text = ax.text(0.02, 0.95, '', transform=ax.transAxes)
     energy_text = ax.text(0.02, 0.90, '', transform=ax.transAxes)
-    global box_qs
-    box_qs = np.array([boxsim.generalized_position()])
-    line, = ax3d.plot(box_qs[0:1,0], box_qs[0:1,1], box_qs[0:1,2])
+    # global box_qs
+    # box_qs = np.array([boxsim.generalized_position()])
+    # line, = ax3d.plot(box_qs[0:1,0], box_qs[0:1,1], box_qs[0:1,2])
     def init():
         """initialize animation"""
         #line.set_data([], [])
 
         time_text.set_text('')
         energy_text.set_text('')
-        return line, patch, points, time_text, energy_text
+        return patch, points, time_text, energy_text
 
     def animate(i):
         """perform animation step"""
@@ -198,11 +225,11 @@ def simulate(model_path=None):
         time_text.set_text('time = %.1f' % boxsim.time_elapsed)
         # energy_text.set_text('energy = %.3f J' % boxsim.energy())
 
-        box_qs = np.concatenate((box_qs, [boxsim.generalized_position()]))
-        line.set_data(box_qs[:i,0],box_qs[:i,1])
-        line.set_3d_properties(box_qs[:i, 2])
+        # box_qs = np.concatenate((box_qs, [boxsim.generalized_position()]))
+        # line.set_data(box_qs[:i,0],box_qs[:i,1])
+        # line.set_3d_properties(box_qs[:i, 2])
 
-        return line, patch, points, time_text, energy_text
+        return patch, points, time_text, energy_text
 
 
     interval = 1000/20
