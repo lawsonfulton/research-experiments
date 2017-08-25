@@ -49,6 +49,12 @@ class BoxSim:
         else:
             return boxes.explicit_decode(q)
 
+    def encode_x_to_q(self, x):
+        if self.use_autoencoder:
+            return self.encoder.predict(np.array([x]))[0]
+        else:
+            raise "Not implemented for explicit mapping"
+
     def numeric_jacobian(self, q):
         jac = np.zeros((8,3))
         for x_i in range(8):
@@ -157,14 +163,19 @@ class BoxSim:
         new_qv = scipy.linalg.solve(A, b)
 
         # II
-        def objective(new_q):
-            D_new_q = self.decode_q_to_x(new_q)
-            diff = D_new_q - v_star
-            return 0.5 * np.dot(diff, diff)
+        use_optimize = True
+        if use_optimize:
+            def objective(new_q):
+                D_new_q = self.decode_q_to_x(new_q)
+                diff = D_new_q - v_star
+                return 0.5 * np.dot(diff, diff)
 
-        q_0 = q
-        res = scipy.optimize.minimize(objective, q_0, method='L-BFGS-B', options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
-        new_q = res.x
+            q_0 = q
+            res = scipy.optimize.minimize(objective, q_0, method='L-BFGS-B', options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
+            new_q = res.x
+        else:
+            new_D_q = D_q + dt *  np.dot(jacxq, qv)
+            new_q = self.encode_x_to_q(new_D_q)
 
         new_state = np.array([*new_q, *new_qv])
         #print(new_state)
@@ -183,7 +194,7 @@ def simulate(model_path=None):
     boxsim = BoxSim(use_autoencoder=use_autoencoder, model_path=model_path)
     # boxsim.test_jacobian()
     # exit()
-    dt = 1.0 / 100
+    dt = 1.0 / 200
 
     #------------------------------------------------------------
     # set up figure and animation
@@ -235,7 +246,7 @@ def simulate(model_path=None):
     interval = 1000/20
     print("Saving")
     ani = animation.FuncAnimation(fig, animate, frames=100,
-                                  interval=interval, blit=True, init_func=init).save('auto_enc_opt2.gif', writer='imagemagick')
+                                  interval=interval, blit=True, init_func=init).save('auto_enc_opt_not_using_encoder.gif', writer='imagemagick')
 
 
     # save the animation as an mp4.  This requires ffmpeg or mencoder to be

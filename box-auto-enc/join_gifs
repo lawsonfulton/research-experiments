@@ -1,0 +1,11 @@
+#!/bin/bash
+# $1 : first gif
+# $2 : second gif
+# $3 : output gif
+mkdir tmp
+convert $1 -coalesce tmp/a-%04d.gif                         # separate frames of 1.gif
+convert $2 -coalesce tmp/b-%04d.gif                         # separate frames of 2.gif
+for f in tmp/a-*.gif; do convert $f ${f/a/b} +append $f; done  # append frames side-by-side
+convert -loop 0 -delay 5 -layers optimize tmp/a-*.gif $3
+
+rm -rf ./tmp

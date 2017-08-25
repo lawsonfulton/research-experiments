@@ -181,10 +181,7 @@ def main():
     # bias_initializer = initializer
     activation = 'relu' #keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
 
-    # , kernel_initializer=initializer, bias_initializer=initializer
-    # , kernel_initializer=initializer, bias_initializer=initializer
-    # , kernel_initializer=initializer, bias_initializer=initializer
-    # , kernel_initializer=initializer, bias_initializer=initializer
+    # Single autoencoder
     input = Input(shape=(len(train_data[0]),))
     output = Dense(200, activation=activation)(input)
     output = Dense(100, activation=activation)(output)
@@ -195,36 +192,65 @@ def main():
 
     autoencoder = Model(input, output)
 
+    ## Double stacked autoencoder (training resets weights it seems, can't figure out how to stop it)
+    # layer1 = Dense(200, activation=activation)
+    # layer2 = Dense(100, activation=activation)
+    # layer3 = Dense(3, activation=activation, name="encoded")
+    # layer4 = Dense(100, activation=activation)
+    # layer5 = Dense(200, activation=activation)
+    # layer6 = Dense(len(train_data[0]), activation='linear')
+
+    # input = Input(shape=(len(train_data[0]),))
+    # output = layer1(input)
+    # output = layer2(output)
+    # output = layer3(output)
+    # output = layer4(output)
+    # output = layer5(output)
+    # output = layer6(output)
+    
+    # autoencoder = Model(input, output)
+
+    # output = layer1(output)
+    # output = layer2(output)
+    # output = layer3(output)
+    # output = layer4(output)
+    # output = layer5(output)
+    # output = layer6(output)
+
+    # double_autoencoder = Model(input, output)
+
     optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
     autoencoder.compile(
         optimizer=optimizer,
         loss='mean_squared_error' #custom_loss(autoencoder)#
     )
+   
 
     start = time.time()
 
-    class OnEpochEnd(keras.callbacks.Callback):
-        def on_epoch_end(self, epoch, logs={}):
-            decoded_boxes = autoencoder.predict(test_data)
+    # class OnEpochEnd(keras.callbacks.Callback):
+    #     def on_epoch_end(self, epoch, logs={}):
+    #         decoded_boxes = autoencoder.predict(test_data)
 
-            # Draw some output
-            num_to_show = 15
-            boxes.draw_from_samples(ax, test_data[:num_to_show], 'r', linewidth=5)
-            boxes.draw_from_samples(ax, decoded_boxes[:num_to_show], 'b',linewidth=2)
+    #         # Draw some output
+    #         num_to_show = 15
+    #         boxes.draw_from_samples(ax, test_data[:num_to_show], 'r', linewidth=5)
+    #         boxes.draw_from_samples(ax, decoded_boxes[:num_to_show], 'b',linewidth=2)
 
-            from IPython.display import display
-            display(fig)
-            ax.clear()
-            # fig.show()
-    print("update")
+    #         from IPython.display import display
+    #         display(fig)
+    #         ax.clear()
+    #         # fig.show()
+    print("updated")
     autoencoder.fit(
         add_noise(train_data), train_data,
-        epochs=250  ,
+        epochs=10,
         batch_size=8192,
         shuffle=True,
         #callbacks=[OnEpochEnd()],
         validation_data=(test_data, test_data)
     )
+
     output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
     autoencoder.save(output_path)
 
