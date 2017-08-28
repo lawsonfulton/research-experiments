@@ -160,7 +160,7 @@ def main():
     ax.set_aspect('equal')
 
     # Setup and train the neural net
-    training_sample_size = 1000000
+    training_sample_size = 5000000
     test_sample_size = 100
 
     print("Generating training data...")
@@ -235,7 +235,7 @@ def main():
     #     validation_data=([test_data], [test_data,test_data])
     # )
 
-    optimizer = keras.optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
+    optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
     autoencoder.compile(
         optimizer= optimizer, #adamax and nadam worked well too
         loss='mean_squared_error' #custom_loss(autoencoder)#
@@ -245,7 +245,7 @@ def main():
     autoencoder.fit(
         add_noise(train_data), train_data,
         epochs=300,
-        batch_size=8192,
+        batch_size=4096,
         shuffle=True,
         #callbacks=[OnEpochEnd()],
         validation_data=(test_data, test_data)
