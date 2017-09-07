@@ -25,6 +25,8 @@ class BoxSim:
 
         self.time_elapsed = 0.0
         self.world_force = np.array([0.0, -9.8, 0.0, -9.8, 0.0, -9.8, 0.0, -9.8])
+        self.world_force += np.array([0.0, 40.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
+
         starting_pos = [0.0, 0.0]
         starting_theta = 0.0
 
@@ -40,6 +42,9 @@ class BoxSim:
             self.jac_x_wrt_q = jacobian(boxes.explicit_decode)
             gen_pos = np.array([*starting_pos, starting_theta])
         
+        self.total_optim_its = 0
+        self.total_optim_calls = 0
+
         gen_vel = np.array([0.0, 0.0, 0.0])
         self.state = np.array([*gen_pos, *gen_vel])
 
@@ -170,8 +175,17 @@ class BoxSim:
                 diff = D_new_q - v_star
                 return 0.5 * np.dot(diff, diff)
 
-            q_0 = q
+            use_warm_start = True
+            if use_warm_start:
+                new_D_q = D_q + dt *  np.dot(jacxq, qv)
+                q_0 = self.encode_x_to_q(new_D_q)
+            else:
+                q_0 = q
+
             res = scipy.optimize.minimize(objective, q_0, method='L-BFGS-B', options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
+            self.total_optim_calls += 1
+            self.total_optim_its += res.nit
+            print("Average number of optimization calls:", float(self.total_optim_its)/self.total_optim_calls)
             new_q = res.x
         else:
             new_D_q = D_q + dt *  np.dot(jacxq, qv)
@@ -246,7 +260,7 @@ def simulate(model_path=None):
     interval = 1000/20
     print("Saving")
     ani = animation.FuncAnimation(fig, animate, frames=100,
-                                  interval=interval, blit=True, init_func=init).save('auto_enc_opt_not_using_encoder.gif', writer='imagemagick')
+                                  interval=interval, blit=True, init_func=init)#.save('auto_enc_opt_using_encoder.gif', writer='imagemagick')
 
 
     # save the animation as an mp4.  This requires ffmpeg or mencoder to be

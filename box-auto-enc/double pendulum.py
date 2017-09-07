@@ -27,7 +27,7 @@ class DoublePendulum:
     pendulum arm, and theta2, omega2 is that of the second pendulum arm
     """
     def __init__(self,
-                 init_state = [120, 0, -20, 0],
+                 init_state = [0, 0, 0, 0],
                  L1=1.0,  # length of pendulum 1 in m
                  L2=1.0,  # length of pendulum 2 in m
                  M1=1.0,  # mass of pendulum 1 in kg
@@ -103,8 +103,8 @@ class DoublePendulum:
 
 #------------------------------------------------------------
 # set up initial state and global variables
-pendulum = DoublePendulum([180., 0.0, -20., 0.0])
-dt = 1./30 # 30 fps
+pendulum = DoublePendulum([90, 0.0, 90., 0.0])
+dt = 1./60 # 30 fps
 
 #------------------------------------------------------------
 # set up figure and animation

@@ -36,25 +36,29 @@ def generate_samples(sample_size=None, x_bounds=[-10,10], y_bounds=[-10,10], arm
         np.dot(rotMatrices[0], refrence_arms[0]),
         np.dot(rotMatrices[1], refrence_arms[1])
     ])
-    rotated_arms[2] = rotated_arms[1] + rotated_arms[2] 
+    # rotated_arms[2] = rotated_arms[1] + rotated_arms[2]
+
+    offsets = np.array([
+        np.zeros((sample_size, 2)),
+        np.zeros(rotated_arms[1].shape),
+        rotated_arms[1]
+    ])
+    offset_arms = rotated_arms + offsets
     
-    #normalized_arms = rotated_arms
-    normalized_arms = rotated_arms / (x_bounds[1] - x_bounds[0]) + 0.5 # See docstring for assumption
+    normalized_arms = offset_arms / (x_bounds[1] - x_bounds[0]) + 0.5 # See docstring for assumption
 
     return normalized_arms.transpose((1,0,2)).reshape(sample_size, 6)
 
-# def explicit_decode(q, size=2.0):
-#     """q = (x, y, theta)"""
-#     center = q[:2]
-#     theta = q[2] 
+def explicit_decode(q):
+    """q = (theta1, theta2)"""
 
-#     return generate_samples(thetas=np.array([theta]), offsets=np.array([center]))[0]
+    return generate_samples(thetas=np.array([q]))[0]
 
 
 def draw_pendulum(pendulum, ax, colour='r', linewidth=1):
     poly = plt.Polygon(pendulum, closed=False, fill=None, edgecolor=colour, linewidth=linewidth, facecolor='y')
-    points, = ax.plot(pendulum[:,0], pendulum[:,1], colour + 'o', ms=linewidth * 3)
-    return ax.add_patch(poly)
+    points, = ax.plot(pendulum[:,0], pendulum[:,1], colour + 'o', ms=linewidth + 2)
+    return ax.add_patch(poly), points
 
 def draw_from_samples(ax, pendulum_samples, colour='r', linewidth=2):
     # c = collections.LineCollection([pendulum_from_vec(b) for b in pendulum_samples], colors='r', linewidths=2)

@@ -42,7 +42,7 @@ def load_autoencoder(path=None, model=None):
 
     if path is not None:
         print("Loading model...")
-        autoencoder = load_model(path, custom_objects={'contractive_loss': lambda x, y: K.mean(y-x)}) # TODO, fix for custom loss
+        autoencoder = load_model(path)#, custom_objects={'contractive_loss': (lambda x, y: K.mean(y-x)), 'alpha': 0.001}) # TODO, fix for custom loss
         print("Done.")
     else:
         autoencoder = model
@@ -69,42 +69,59 @@ def animate(autoencoder, encoder, decoder):
     from mpl_toolkits.mplot3d import Axes3D
     from matplotlib import animation
 
-    fig = plt.figure(figsize=(8,4))
+    fig = plt.figure(figsize=(16,8))
     ax = fig.add_subplot(1,2,1)
     ax.set_xlim([-10, 10])
     ax.set_ylim([-10, 10])
     ax.set_aspect('equal')
 
-    ax3d = fig.add_subplot(1,2,2, projection='3d')
-    ax3d.set_xlim([0,1.0])
-    ax3d.set_ylim([0,1.0])
-    ax3d.set_zlim([0,1.0])
+    axenc = fig.add_subplot(1,2,2)
+    axenc.set_xlim([-3.14, 2*3.14])
+    axenc.set_ylim([-3.14, 2*3.14])
+    axenc.set_aspect('equal')
 
-    n_samples = 100
+    fr = 15
+    seconds = 5
+    n_samples = fr * seconds
     r = 6
-    thetas = np.linspace(0.0, 8*math.pi, num=n_samples) #np.zeros(n_samples)
-    offsets = np.array([[r * math.sin(theta), r * math.cos(theta)] for theta in np.linspace(0.0, 2*math.pi, num=n_samples)])
+    thetas = np.linspace(0.0, 2*math.pi, num=n_samples) #np.zeros(n_samples)
 
-    real_pendulums = pendulums.generate_samples(offsets=offsets, thetas=thetas)
-    encoded_pendulums = encoder.predict(real_pendulums)
-    decoded_pendulums = decoder.predict(encoded_pendulums)
 
-    line, = ax3d.plot(encoded_pendulums[0:1,0], encoded_pendulums[0:1,1], encoded_pendulums[0:1,2])
+    real_pendulums = pendulums.generate_samples(thetas=np.array([thetas, thetas*4.0]).transpose())
+
+    def denormalize(x):
+        return (x-0.5) * 20.0
+
+
+    p = denormalize(real_pendulums)[:, 2:]
+    r=4.0
+
+    encoded_pendulums = np.array([-np.arctan2(p[:, 1],p[:, 0]), math.pi - np.arctan2(p[:, 1] - p[:,3],p[:, 0]-p[:,2])]).transpose()
+    # encoded_pendulums = np.array([np.arcsin(denormalize(p[:,3]) / r), np.arcsin((denormalize(p[:,5]) - denormalize(p[:,3]))/r)]).transpose()
+    decoded_pendulums = pendulums.generate_samples(thetas=encoded_pendulums)
+
+
+    # encoded_pendulums = encoder.predict(real_pendulums)
+    # decoded_pendulums = decoder.predict(encoded_pendulums)
+
+    line, = axenc.plot(encoded_pendulums[0:1,0], encoded_pendulums[0:1,1])
     def animate(i):
     #     line.set_ydata(np.sin(x + i/10.0))  # update the data
         ax.clear()
-        pendulums.draw_from_samples(ax, [real_pendulums[i]], 'r', linewidth=5)
+        ax.set_xlim([-10, 10])
+        ax.set_ylim([-10, 10])
+        ax.set_aspect('equal')
+        pendulums.draw_from_samples(ax, [real_pendulums[i]], 'r', linewidth=3)
         pendulums.draw_from_samples(ax, [decoded_pendulums[i]], 'b')
         
         line.set_data(encoded_pendulums[:i,0],encoded_pendulums[:i,1])
-        line.set_3d_properties(encoded_pendulums[:i, 2])
-    print("animating")
 
-    anim = animation.FuncAnimation(fig, animate, frames=n_samples, interval=1000/25, blit=False)#True)
+
+    anim = animation.FuncAnimation(fig, animate, frames=n_samples, interval=1000/fr, blit=False)#True)
     print("loading video")
     #anim.to_html5_video()
     #anim.save(output_path, writer='imagemagick')
-    print("done")
+
     return anim
 
 def jacobian_output_wrt_input(model): # TODO n = batch_size
@@ -160,99 +177,79 @@ def main():
     ax.set_aspect('equal')
 
     # Setup and train the neural net
-    training_sample_size = 5000000
-    test_sample_size = 100
+    training_sample_size = 500000#2**20
+    test_sample_size = 2**14
 
     print("Generating training data...")
 
-    # TODO This could be more efficient
-    #train_data = generate_box_samples(training_sample_size, x_bounds, y_bounds)
-    train_data = pendulums.generate_samples(training_sample_size)
+
+    #train_data = pendulums.generate_samples(training_sample_size)
+
+    theta1_granularity = 1000
+    theta1 = np.linspace(0.0, 2*math.pi, num=theta1_granularity)
+    theta2_granularity = 1000
+    theta2 = np.linspace(0.0, 2*math.pi, num=theta2_granularity)
+    thetas = np.transpose([np.tile(theta1, len(theta2)), np.repeat(theta2, len(theta1))])
+
+    train_data = pendulums.generate_samples(thetas=thetas)
     test_data = pendulums.generate_samples(test_sample_size, x_bounds, y_bounds)
+
     # TODO test data should be from a different part of the plane to make sure we are generalizing
     print("Done. Runtime: ", time.time()-start_time)
     
     model_start_time = time.time()
-    
-
-    # Needed for relu but apparently not for elu
-    # For some reason I can't learn high frequency functions with relu alone, and the positive initializer seems
-    # to mess with elu
-    # initializer = 'glorot_uniform'
-    # activation = 'elu'
 
     initializer = keras.initializers.RandomUniform(minval=0.0001, maxval=0.01)
     # bias_initializer = initializer
-    activation = 'linear' #keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
+    activation = 'relu' #keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
 
-    from keras.layers.advanced_activations import LeakyReLU
-    alpha = 0.001
+
+    # autoencoder = Model(input, output)
+    num_layers = 3
+    layer_size = 1024
+
+    #{'activation': 'relu', 'activation_1': 'sigmoid', 'batch_size': 512, 'layer_size': 1024, 'lr': 0.0005, 'num_layers': 3}
 
     # # Single autoencoder
     input = Input(shape=(len(train_data[0]),))
     output = input
-    output = Dense(100, activation=activation)(output)
-    output = LeakyReLU(alpha=alpha)(output)
-    output = Dense(100, activation=activation)(output)
-    output = LeakyReLU(alpha=alpha)(output)
+
+    for i in range(num_layers):
+        output = Dense(layer_size, activation=activation)(output)
+
     output = Dense(2, activation=activation, name="encoded", kernel_initializer=initializer, bias_initializer='zeros')(output) #maybe just try avoiding dead neurons in small encoding layer?
-    output = LeakyReLU(alpha=alpha)(output)
-    output = Dense(100, activation=activation)(output)
-    output = LeakyReLU(alpha=alpha)(output)
-    output = Dense(100, activation=activation)(output)
-    output = LeakyReLU(alpha=alpha)(output)
-    output = Dense(len(train_data[0]), activation='linear')(output)#'linear',)(output) # First test seems to indicate no change on output with linear
+    
+    for i in range(num_layers):
+        output = Dense(layer_size, activation=activation)(output)
+
+    output = Dense(len(train_data[0]), activation='sigmoid')(output)#'linear',)(output) # First test seems to indicate no change on output with linear
 
     autoencoder = Model(input, output)
 
-    # stacked? autoencoder
-    # main_input = Input(shape=(len(train_data[0]),))
-    # output1 = main_input
-    # output2 = Dense(100, activation=activation)(output1)
-    # output3 = Dense(3, activation=activation, name="encoded1", kernel_initializer=initializer, bias_initializer='zeros')(output2)
-    # output4 = Dense(100, activation=activation)(output3)
-    # aux_output = Dense(len(train_data[0]), activation='linear', name="auxout")(output4)#'linear',)(output) # First test seems to indicate no change on output with linear
 
-    # output6 = Dense(2, activation=activation, name="encoded2", kernel_initializer=initializer, bias_initializer='zeros')(output3) #maybe just try avoiding dead neurons in small encoding layer?
-    # output7 = Dense(100, activation=activation)(output6)
-    # main_output = Dense(len(train_data[0]), activation='linear', name="mainout")(output7)#'linear',)(output) # First test seems to indicate no change on output with linear
-
-    # autoencoder = Model(inputs=[main_input], outputs=[main_output, aux_output])
-
-    # optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
-    # autoencoder.compile(
-    #     optimizer=optimizer,
-    #     loss='mean_squared_error' #custom_loss(autoencoder)#
-    # )
-
-    # start = time.time()
-    # autoencoder.fit(
-    #     [train_data], [train_data,train_data],
-    #     epochs=10,
-    #     batch_size=4096,
-    #     shuffle=True,
-    #     #callbacks=[OnEpochEnd()],
-    #     validation_data=([test_data], [test_data,test_data])
-    # )
-
-    optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
+    optimizer = keras.optimizers.Adam(lr=0.0005, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
     autoencoder.compile(
         optimizer= optimizer, #adamax and nadam worked well too
-        loss='mean_squared_error' #custom_loss(autoencoder)#
+        loss="mean_squared_error",#custom_loss(autoencoder)#
     )
 
     start = time.time()
+
+    # from keras.callbacks import TensorBoard
+    # tensorboard = TensorBoard(log_dir="logs/{}".format(datetime.datetime.now().strftime("%I%M%p%B%d%Y")), write_graph=False)#,histogram_freq=2,)#, histogram_freq=1, write_graph=False)
+    early_stop = keras.callbacks.EarlyStopping(monitor='val_loss', min_delta=0, patience=1, verbose=0, mode='min')
     autoencoder.fit(
         add_noise(train_data), train_data,
-        epochs=300,
-        batch_size=4096,
+        epochs=10,
+        batch_size=512,
         shuffle=True,
-        #callbacks=[OnEpochEnd()],
+        callbacks=[early_stop],#tensorboard],
         validation_data=(test_data, test_data)
     )
 
     output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
     autoencoder.save(output_path)
+    print("Saved at:", output_path)
 
     ### MY stacked autoencoder
     print("Total model time: ", time.time() - model_start_time)
