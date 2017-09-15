@@ -24,7 +24,7 @@ def main():
     # Simulation Parameters
     spring_const = 10.0 # Technically could vary per spring
     h = 0.01
-    mass = 1
+    mass = 5
     # Initial conditions
     starting_stretch = 1#0.6
 
@@ -110,7 +110,7 @@ def main():
     # Want D1_Ld + D2_Ld = 0
     # Do root finding
     def DEL(new_q, cur_q, prev_q):
-        return D1_Ld(cur_q, new_q) + D2_Ld(prev_q, cur_q) + external_forces
+        return D1_Ld(cur_q, new_q) + D2_Ld(prev_q, cur_q) + mass_matrix @ external_forces
 
     jac_DEL = autograd.jacobian(DEL, 0)
 
