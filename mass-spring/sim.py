@@ -4,6 +4,8 @@ import autograd.numpy as numpy
 
 from scipy import optimize
 
+import pickle
+
 from viz import render
 
 def construct_P_matrices(springs, n_points, d):
@@ -23,8 +25,8 @@ def main():
 
     # Simulation Parameters
     spring_const = 10.0 # Technically could vary per spring
-    h = 0.01
-    mass = 5
+    h = 0.005
+    mass = 0.05
     # Initial conditions
     starting_stretch = 1#0.6
 
@@ -41,13 +43,17 @@ def main():
         [1,0],
         [2,1],
         [2,0],
-        # [0,2],
-        # [0,-1]
-    ]) * 0.1 + 0.5
+        [3,1],
+        [3,0],
+        [4,1],
+        [4,0],
+    ]) * 0.1 + 0.3
     n_points = len(starting_points) # Num points
     q_initial = starting_points.flatten()
 
-    pinned_points = [0, 1]#, 6, 7]
+    pinned_points = numpy.array([0, 1])
+    q_mask = numpy.ones(n_points * d, dtype=bool)
+    q_mask[numpy.concatenate([pinned_points * d + i for i in range(d)])] = False
 
     springs = [
         (0, 2),
@@ -61,8 +67,17 @@ def main():
         (3, 5),
         (3, 4),
         (4, 5),
-        # (6, 2),
-        # (7, 3)
+        (4, 6),
+        (4, 7),
+        (5, 6),
+        (5, 7),
+        (6, 7),
+
+        (6, 8),
+        (6, 9),
+        (7, 8),
+        (7, 9),
+        (8, 9),
     ]
 
     n_springs = len(springs)
@@ -72,7 +87,7 @@ def main():
     rest_lens = numpy.linalg.norm(all_spring_offsets, axis=1) * starting_stretch
 
     mass_matrix = numpy.identity(len(q_initial)) * mass # Mass matrix
-    external_forces = numpy.array([0, -1] * n_points)
+    external_forces = numpy.array([0, -9.8] * n_points)
     
     def kinetic_energy(q_k, q_k1):
         """ Profile this to see if using numpy.dot is different from numpy.matmul (@)"""
@@ -110,25 +125,48 @@ def main():
     # Want D1_Ld + D2_Ld = 0
     # Do root finding
     def DEL(new_q, cur_q, prev_q):
-        return D1_Ld(cur_q, new_q) + D2_Ld(prev_q, cur_q) + mass_matrix @ external_forces
+        # SUPER hacky way of adding constrained points
+        for i in pinned_points:
+            new_q = numpy.insert(new_q, i*d, q_initial[i*d])
+            new_q = numpy.insert(new_q, i*d+1, q_initial[i*d+1])
+
+        res = D1_Ld(cur_q, new_q) + D2_Ld(prev_q, cur_q) + mass_matrix @ external_forces
+
+        # SUPER hacky way of adding constrained points
+        return res[q_mask]
 
     jac_DEL = autograd.jacobian(DEL, 0)
 
     ### Simulation
+    q_history = []
+    save_freq = 1000
+    current_frame = 0
+    output_path = 'configurations'
+
     prev_q = q_initial
     cur_q = q_initial
     while True:
-        sol = optimize.root(DEL, cur_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
+        # SUPER hacky
+        constrained_q = cur_q[q_mask]
+
+        sol = optimize.root(DEL, constrained_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
         prev_q = cur_q
         cur_q = sol.x
 
-        # Fix the position of some points. Is this valid?? not really...
-        for p in pinned_points:
-            index = p * d
-            cur_q[index] = q_initial[index]
-            cur_q[index + 1] = q_initial[index + 1]
+        # SUPER hacky way of adding constrained points
+        for i in pinned_points:
+            cur_q = numpy.insert(cur_q, i*d, q_initial[i*d])
+            cur_q = numpy.insert(cur_q, i*d+1, q_initial[i*d+1])
 
         render(cur_q, springs, save_frames=False)
+
+        if save_freq > 0:
+            current_frame += 1
+            q_history.append(cur_q)
+
+            if current_frame % save_freq == 0:
+                with open(output_path, 'wb') as f:
+                    pickle.dump(q_history, f)
 
 if __name__ == '__main__':
     main()

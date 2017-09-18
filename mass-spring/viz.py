@@ -22,7 +22,7 @@ screen = pygame.display.set_mode((width,height))
 clock = pygame.time.Clock()
 frame_count = 0
 
-def render(q, springs, save_frames=False):
+def render(q, springs, save_frames=False, color=black):
     screen.fill(background)
 
     points = to_screen(numpy.reshape(q, (len(q)//2, 2)))
@@ -51,7 +51,7 @@ def to_screen(world_points):
 
 def update(save_frames):
     global frame_count
-    
+
     clock.tick(max_framerate)
     text_surf = font.render(str(int(clock.get_fps())), True, (0,0,0))
     screen.blit(text_surf,(0,0))
