@@ -4,7 +4,7 @@ import sys
 
 # Display parameters
 width = height = 800
-max_framerate = 60
+max_framerate = 600
 
 # Color constants
 background = (255, 255, 255)
@@ -24,7 +24,7 @@ frame_count = 0
 
 def render(q, springs, save_frames=False, color=black):
     screen.fill(background)
-
+    
     points = to_screen(numpy.reshape(q, (len(q)//2, 2)))
 
     for point in points:
