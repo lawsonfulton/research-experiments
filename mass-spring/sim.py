@@ -137,6 +137,11 @@ def main():
 
     jac_DEL = autograd.jacobian(DEL, 0)
 
+    def DEL_objective(new_q, cur_q, prev_q):
+        res = DEL(new_q, cur_q, prev_q)
+
+        return res.T @ res
+
     ### Simulation
     q_history = []
     save_freq = 1000
@@ -150,6 +155,7 @@ def main():
         constrained_q = cur_q[q_mask]
 
         sol = optimize.root(DEL, constrained_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
+        #sol = optimize.minimize(DEL_objective, constrained_q, args=(cur_q, prev_q), method='L-BFGS-B')#, options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
         prev_q = cur_q
         cur_q = sol.x
 
