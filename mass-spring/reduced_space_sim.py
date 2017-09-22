@@ -38,12 +38,6 @@ def main():
     # Initial conditions
     starting_stretch = 1#0.6
 
-    # starting_points = numpy.array([
-    #     [0.4, 0.5],
-    #     [0.6, 0.5],
-    #     [0.8, 0.5],
-    #     [1, 0.5]
-    # ])
     starting_points = numpy.array([
         [0,1],
         [0,0],
