@@ -88,7 +88,68 @@ def main():
 
     mass_matrix = numpy.identity(len(q_initial)) * mass # Mass matrix
     external_forces = numpy.array([0, -9.8] * n_points)
-    
+
+    # Assemble offsets
+    P = numpy.concatenate(B @ P_matrices)
+
+    # Assemble forces
+    Pf = numpy.array([numpy.zeros(len(springs) * 2)] * n_points * 2)
+    for i, s in enumerate(springs):
+        n0 = s[0] * 2
+        n1 = s[1] * 2
+        col = i * 2
+        Pf[n0][col] = 1.0
+        Pf[n0+1][col+1] = 1.0
+        Pf[n1][col] = -1.0
+        Pf[n1+1][col+1] = -1.0
+   # print(Pf.shape) #?????? why wrong
+
+    def compute_internal_forces(q):
+        # forces = numpy.array([[0.0, 0.0]] * len(springs))
+        # for i, s in enumerate(springs):
+        #     s0 = s[0] * 2
+        #     s1 = s[1] * 2
+        #     offset_vec = q[s0: s0 + 2] - q[s1: s1 + 2]
+        #     length = numpy.linalg.norm(offset_vec)
+        #     displacement_dir = offset_vec / length
+        #     force = -spring_const * (length / rest_lens[i] - 1.0) * displacement_dir
+        #     forces[i] = force
+
+        offsets = (P @ q).reshape(n_springs, 2)
+        lengths = numpy.sqrt((offsets * offsets).sum(axis=1))
+        #normed_displacements = numpy.linalg.norm(offsets, axis=1)
+        normed_displacements = offsets / lengths[:, None]
+        forces = (spring_const * (lengths / rest_lens - 1.0))[:, None] * normed_displacements # Forces per spring
+        forces = forces.flatten()
+
+        global_forces = Pf @ forces
+        return global_forces
+
+    # print(compute_internal_forces(q_initial))
+    # print(autograd.jacobian(compute_internal_forces)(q_initial))
+
+    def find_natural_modes():
+        # q = q_initial * 2
+        # # K = spring_const * numpy.concatenate(B @ P_matrices) * 1.0 / mass # Multiplying by inverse mass to ger rid of mass matrix on right
+        # F = (1.0 - (1.0 / rest_lens) * numpy.sqrt(numpy.einsum('ij,ij->i', q.T @ P_matrices.transpose((0,2,1)) @ B.T, (B @ P_matrices @ q))))
+        # print(len(q_initial))
+        # print(F.shape)
+        # print(F)
+        # print(len(springs))
+        K = autograd.jacobian(compute_internal_forces)(q_initial) * 1.0 / mass
+        w, v = numpy.linalg.eig(K)
+        print(numpy.real_if_close(w[0]))
+        print(v)
+
+        i = 0
+        while True:
+            render(numpy.real_if_close(v[i] + q_initial), springs, save_frames=False)
+            i = (i + 1) % len(v)
+            import time
+            time.sleep(0.1)
+    find_natural_modes()
+    exit()
+
     def kinetic_energy(q_k, q_k1):
         """ Profile this to see if using numpy.dot is different from numpy.matmul (@)"""
 
@@ -154,8 +215,8 @@ def main():
         # SUPER hacky
         constrained_q = cur_q[q_mask]
 
-        #sol = optimize.root(DEL, constrained_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
-        sol = optimize.minimize(DEL_objective, constrained_q, args=(cur_q, prev_q), method='L-BFGS-B')#, options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
+        sol = optimize.root(DEL, constrained_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
+        #sol = optimize.minimize(DEL_objective, constrained_q, args=(cur_q, prev_q), method='L-BFGS-B')#, options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
         prev_q = cur_q
         cur_q = sol.x
 
