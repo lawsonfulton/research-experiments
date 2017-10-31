@@ -128,29 +128,6 @@ def main():
     # print(compute_internal_forces(q_initial))
     # print(autograd.jacobian(compute_internal_forces)(q_initial))
 
-    def find_natural_modes():
-        # q = q_initial * 2
-        # # K = spring_const * numpy.concatenate(B @ P_matrices) * 1.0 / mass # Multiplying by inverse mass to ger rid of mass matrix on right
-        # F = (1.0 - (1.0 / rest_lens) * numpy.sqrt(numpy.einsum('ij,ij->i', q.T @ P_matrices.transpose((0,2,1)) @ B.T, (B @ P_matrices @ q))))
-        # print(len(q_initial))
-        # print(F.shape)
-        # print(F)
-        # print(len(springs))
-        K = autograd.jacobian(compute_internal_forces)(q_initial) * 1.0 / mass
-        w, v = numpy.linalg.eig(K)
-        print(numpy.real_if_close(w[0]))
-        print(v)
-
-        i = 0
-        while True:
-            if all(numpy.imag(w[i] + v[i])) < 0.01:
-                render(numpy.real_if_close(v[i] * w[i]+ q_initial), springs, save_frames=False)
-                
-                import time
-                time.sleep(0.1)
-            i = (i + 1) % len(v)
-    find_natural_modes()
-    exit()
 
     def kinetic_energy(q_k, q_k1):
         """ Profile this to see if using numpy.dot is different from numpy.matmul (@)"""
@@ -177,6 +154,30 @@ def main():
         )
 
         return 0.5 * spring_const * sum
+
+    def find_natural_modes():
+        # q = q_initial * 2
+        # # K = spring_const * numpy.concatenate(B @ P_matrices) * 1.0 / mass # Multiplying by inverse mass to ger rid of mass matrix on right
+        # F = (1.0 - (1.0 / rest_lens) * numpy.sqrt(numpy.einsum('ij,ij->i', q.T @ P_matrices.transpose((0,2,1)) @ B.T, (B @ P_matrices @ q))))
+        # print(len(q_initial))
+        # print(F.shape)
+        # print(F)
+        # print(len(springs))
+
+        #K = -autograd.jacobian(compute_internal_forces)(q_initial) * 1.0 / mass
+        K = -autograd.jacobian(autograd.grad(potential_energy))(q_initial) * 1.0/mass
+        w, v = numpy.linalg.eig(K)
+        print(numpy.real_if_close(w[0]))
+        print(len(v))
+
+        i = 0
+        while True:
+            render(numpy.real_if_close(v[i] * 0.01 + q_initial), springs, save_frames=False)
+            i = (i + 1) % len(v)
+            import time
+            time.sleep(0.1)
+    find_natural_modes()
+    exit()
 
     def discrete_lagrangian(q_k, q_k1):
         return kinetic_energy(q_k, q_k1) - potential_energy(q_k, q_k1)
