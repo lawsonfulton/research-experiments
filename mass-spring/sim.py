@@ -143,10 +143,12 @@ def main():
 
         i = 0
         while True:
-            render(numpy.real_if_close(v[i] + q_initial), springs, save_frames=False)
+            if all(numpy.imag(w[i] + v[i])) < 0.01:
+                render(numpy.real_if_close(v[i] * w[i]+ q_initial), springs, save_frames=False)
+                
+                import time
+                time.sleep(0.1)
             i = (i + 1) % len(v)
-            import time
-            time.sleep(0.1)
     find_natural_modes()
     exit()
 

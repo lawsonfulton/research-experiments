@@ -1,0 +1,72 @@
+### Setup
+
+    # Constants
+    d = 2  # dimensions
+    I = numpy.identity(d)
+    B = numpy.concatenate((I, -I), axis=1)  # Difference matrix
+
+    # Simulation Parameters
+    spring_const = 10.0 # Technically could vary per spring
+    h = 0.005
+    mass = 0.05
+    # Initial conditions
+    starting_stretch = 1#0.6
+
+    # starting_points = numpy.array([
+    #     [0.4, 0.5],
+    #     [0.6, 0.5],
+    #     [0.8, 0.5],
+    #     [1, 0.5]
+    # ])
+    starting_points = numpy.array([
+        [0,1],
+        [0,0],
+        [1,1],
+        [1,0],
+        [2,1],
+        [2,0],
+        [3,1],
+        [3,0],
+        [4,1],
+        [4,0],
+    ]) * 0.1 + 0.3
+    n_points = len(starting_points) # Num points
+    q_initial = starting_points.flatten()
+
+    pinned_points = numpy.array([0, 1])
+    q_mask = numpy.ones(n_points * d, dtype=bool)
+    q_mask[numpy.concatenate([pinned_points * d + i for i in range(d)])] = False
+
+    springs = [
+        (0, 2),
+        (0, 3),
+        (2, 3),
+        (1, 2),
+        (1, 3),
+        (2, 4),
+        (2, 3),
+        (2, 5),
+        (3, 5),
+        (3, 4),
+        (4, 5),
+        (4, 6),
+        (4, 7),
+        (5, 6),
+        (5, 7),
+        (6, 7),
+
+        (6, 8),
+        (6, 9),
+        (7, 8),
+        (7, 9),
+        (8, 9),
+    ]
+
+    n_springs = len(springs)
+    P_matrices = construct_P_matrices(springs, n_points, d)
+    
+    all_spring_offsets = (B @ (P_matrices @ q_initial).T).T
+    rest_lens = numpy.linalg.norm(all_spring_offsets, axis=1) * starting_stretch
+
+    mass_matrix = numpy.identity(len(q_initial)) * mass # Mass matrix
+    external_forces = numpy.array([0, -9.8] * n_points)

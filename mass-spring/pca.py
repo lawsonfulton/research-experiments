@@ -48,7 +48,7 @@ def main():
     numpy.random.shuffle(data)
     train_data = data[:sample_size]
 
-    pca = PCA(n_components=2)
+    pca = PCA(n_components=1)
     pca.fit(train_data)
 
     def encode(q):

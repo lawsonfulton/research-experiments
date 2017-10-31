@@ -23,15 +23,15 @@ clock = pygame.time.Clock()
 frame_count = 0
 
 def render(q, springs, save_frames=False, color=black):
-    # screen.fill(background)
+    screen.fill(background)
     
     points = to_screen(numpy.reshape(q, (len(q)//2, 2)))
 
     for point in points:
         pygame.draw.circle(screen, red, point, 3)
 
-    # for spring in springs:
-    #     pygame.draw.aaline(screen, black, points[spring[0]], points[spring[1]])
+    for spring in springs:
+        pygame.draw.aaline(screen, black, points[spring[0]], points[spring[1]])
 
     update(save_frames)
     
