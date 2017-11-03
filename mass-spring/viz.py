@@ -39,8 +39,8 @@ def to_screen(world_points):
     """Takes points in [0, 1]x[0,1] and maps them to [0,width]x[0,height] with the y coordinate reversed for screen space"""
     screen_points = []
     for world_point in world_points:
-        wx = world_point[0]
-        wy = world_point[1]
+        wx = world_point[0] * 0.05 + 0.5
+        wy = world_point[1] * 0.05 + 0.5
 
         sx = int(wx * width)
         sy = int((1 - wy) * height)

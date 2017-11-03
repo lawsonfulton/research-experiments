@@ -88,9 +88,9 @@ def do_training(training_data):
     
     print("Total runtime: ", time.time() - start_time)
 
+# base_path = 'data-armadillo/verts'
 base_path = 'models/Scene_'
-#base_path = 'data-armadillo/verts'
-# base_path = 'data-armadillo/verts' # Need to change to i+1 for this one
+
 def read_ply(i):
     #filename = 'data-armadillo/verts%d.ply' % (i + 1)
     filename = base_path + '%d.ply' % i
@@ -140,125 +140,122 @@ def main():
     displacements_sample = [p2e(m) for m in numpy_displacements_sample]
     print("Took:", time.time() - start)
 
+    ### PCA Version
+    print("Doing PCA...")
+    train_size = num_samples
+    test_size = num_samples
+    test_data = numpy_displacements_sample[:test_size] * 1.0
+    test_data_eigen = verts_sample[:test_size]
+    numpy.random.shuffle(numpy_displacements_sample)
+    # train_data = numpy_verts_sample[test_size:test_size+train_size]
+    train_data = numpy_displacements_sample[0:train_size]
 
-    use_pca = False
-    if use_pca:
-        ### PCA Version
-        print("Doing PCA...")
-        train_size = num_samples
-        test_size = num_samples
-        test_data = numpy_displacements_sample[:test_size] * 1.0
-        test_data_eigen = verts_sample[:test_size]
-        numpy.random.shuffle(numpy_displacements_sample)
-        # train_data = numpy_verts_sample[test_size:test_size+train_size]
-        train_data = numpy_displacements_sample[0:train_size]
+    pca = PCA(n_components=30)
+    pca.fit(train_data.reshape((train_size, 3 * num_verts)))
 
-        pca = PCA(n_components=3)
-        pca.fit(train_data.reshape((train_size, 3 * num_verts)))
+    # def encode(q):
+    #     return pca.transform(numpy.array([q.flatten() - numpy_base_verts]))[0]
 
-        # def encode(q):
-        #     return pca.transform(numpy.array([q.flatten() - numpy_base_verts]))[0]
+    # def decode(z):
+    #     return (numpy_base_verts + pca.inverse_transform(numpy.array([z]))[0]).reshape((num_verts, 3))
 
-        # def decode(z):
-        #     return (numpy_base_verts + pca.inverse_transform(numpy.array([z]))[0]).reshape((num_verts, 3))
+    # print(numpy.equal(test_data[0].flatten().reshape((len(test_data[0]),3)), test_data[0]))
+    # print(encode(test_data[0]))
 
-        # print(numpy.equal(test_data[0].flatten().reshape((len(test_data[0]),3)), test_data[0]))
-        # print(encode(test_data[0]))
+    test_data_pca_encoded = pca.transform(test_data.reshape(test_size, 3 * num_verts))
+    test_data_pca_decoded = (numpy_base_verts + pca.inverse_transform(test_data_pca_encoded)).reshape(test_size, num_verts, 3)
+    test_data_decoded_eigen = [p2e(m) for m in test_data_pca_decoded]
+    ### End of PCA version
 
-        test_data_encoded = pca.transform(test_data.reshape(test_size, 3 * num_verts))
-        test_data_decoded = (numpy_base_verts + pca.inverse_transform(test_data_encoded)).reshape(test_size, num_verts, 3)
-        test_data_decoded_eigen = [p2e(m) for m in test_data_decoded]
-        ### End of PCA version
-    else:
-        ### Autoencoder
-        import keras
-        from keras.layers import Input, Dense
-        from keras.models import Model, load_model
-        import datetime
+    ### Autoencoder
+    import keras
+    from keras.layers import Input, Dense
+    from keras.models import Model, load_model
+    import datetime
 
-        start_time = time.time()
-        
-        train_size = num_samples
-        test_size = num_samples
-        test_data = numpy_displacements_sample[:test_size].reshape(test_size, 3 * num_verts)
-        test_data_eigen = verts_sample[:test_size]
-        # numpy.random.shuffle(numpy_displacements_sample)
-        # train_data = numpy_verts_sample[test_size:test_size+train_size]
-        train_data = numpy_displacements_sample[0:train_size].reshape((train_size, 3 * num_verts))
+    start_time = time.time()
+    
+    train_size = num_samples
+    test_size = num_samples
+    test_data = test_data_pca_encoded[:test_size]
+    test_data_eigen = verts_sample[:test_size]
+    # numpy.random.shuffle(test_data_pca_encoded)
+    # train_data = numpy_verts_sample[test_size:test_size+train_size]
+    train_data = test_data_pca_encoded[0:train_size]
 
-        mean = numpy.mean(train_data, axis=0)
-        std = numpy.std(train_data, axis=0)
-        
-        mean = numpy.mean(train_data)
-        std = numpy.std(train_data)
+    mean = numpy.mean(train_data, axis=0)
+    std = numpy.std(train_data, axis=0)
+    
+    mean = numpy.mean(train_data)
+    std = numpy.std(train_data)
 
-        s_min = numpy.min(train_data)
-        s_max = numpy.max(train_data)
-        
+    s_min = numpy.min(train_data)
+    s_max = numpy.max(train_data)
+    
 
-        def normalize(data):
-            return numpy.nan_to_num((data - mean) / std)
-            # return numpy.nan_to_num((train_data - s_min) / (s_max - s_min))
-        def denormalize(data):
-            return data * std + mean
-            # return data * (s_max - s_min) + s_min
+    def normalize(data):
+        return numpy.nan_to_num((data - mean) / std)
+        # return numpy.nan_to_num((train_data - s_min) / (s_max - s_min))
+    def denormalize(data):
+        return data * std + mean
+        # return data * (s_max - s_min) + s_min
 
-        train_data = normalize(train_data)
-        test_data = normalize(test_data)
+    train_data = normalize(train_data)
+    test_data = normalize(test_data)
 
-        # print(train_data)
-        # print(mean)
-        # print(std)
-        # exit()
-        # this is the size of our encoded representations
-        encoded_dim = 3
+    # print(train_data)
+    # print(mean)
+    # print(std)
+    # exit()
+    # this is the size of our encoded representations
+    encoded_dim = 3
 
-        # Single autoencoder
-        # initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.01, seed=5)
-        # bias_initializer = initializer
-        activation = keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
-        
-        input = Input(shape=(len(train_data[0]),))
-        output = input
-        output = Dense(30, activation=activation)(input)
-        output = Dense(512, activation=activation)(output)
-        output = Dense(64, activation=activation)(output)
-        output = Dense(encoded_dim, activation=activation, name="encoded")(output)
-        output = Dense(64, activation=activation)(output)
-        output = Dense(512, activation=activation)(output)
-        output = Dense(30, activation=activation)(output)
-        output = Dense(len(train_data[0]), activation='linear')(output)#'linear',)(output) # First test seems to indicate no change on output with linear
+    # Single autoencoder
+    # initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.01, seed=5)
+    # bias_initializer = initializer
+    activation = keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
+    
+    input = Input(shape=(len(train_data[0]),))
+    output = input
+    
+    output = Dense(512, activation=activation)(output)
+    output = Dense(64, activation=activation)(output)
+    output = Dense(encoded_dim, activation=activation, name="encoded")(output)
+    output = Dense(64, activation=activation)(output)
+    output = Dense(512, activation=activation)(output)
+    
+    output = Dense(len(train_data[0]), activation='linear')(output)#'linear',)(output) # First test seems to indicate no change on output with linear
 
-        autoencoder = Model(input, output)
+    autoencoder = Model(input, output)
 
-        optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
-        autoencoder.compile(
-            optimizer=optimizer,
-            loss='mean_squared_error'
-        )
-        
-        model_start_time = time.time()
-        autoencoder.fit(
-            train_data, train_data,
-            epochs=1000,
-            batch_size=num_samples,
-            shuffle=True,
-            validation_data=(test_data, test_data)
-        )
+    optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
+    autoencoder.compile(
+        optimizer=optimizer,
+        loss='mean_squared_error'
+    )
+    
+    model_start_time = time.time()
+    autoencoder.fit(
+        train_data, train_data,
+        epochs=3000,
+        batch_size=num_samples,
+        shuffle=True,
+        validation_data=(test_data, test_data)
+    )
 
-        # output_path = 'trained_models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
-        # autoencoder.save(output_path)
+    # output_path = 'trained_models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
+    # autoencoder.save(output_path)
 
-        print("Total model time: ", time.time() - model_start_time)
+    print("Total model time: ", time.time() - model_start_time)
 
-        # Display
-        
-        decoded_samples = denormalize(autoencoder.predict(test_data))
-        #decoded_samples = autoencoder.predict(test_data) * std + mean
+    # Display
+    
+    ae_decoded_samples = denormalize(autoencoder.predict(test_data))
+    #ae_decoded_samples = autoencoder.predict(test_data) * std + mean
 
-        test_data_decoded = (numpy_base_verts + decoded_samples).reshape(test_size, num_verts, 3)
-        test_data_decoded_eigen = [p2e(m) for m in test_data_decoded]
-        ### End of Autoencoder
+    test_data_decoded = (numpy_base_verts + pca.inverse_transform(ae_decoded_samples)).reshape(test_size, num_verts, 3)
+    test_data_decoded_eigen = [p2e(m) for m in test_data_decoded]
+    ### End of Autoencoder
 
     # Error colours 
     error = numpy.sum((test_data_decoded - numpy_verts_sample) ** 2, axis=2)

@@ -30,61 +30,78 @@ def main():
     # Initial conditions
     starting_stretch = 1#0.6
 
-    # starting_points = numpy.array([
-    #     [0.4, 0.5],
-    #     [0.6, 0.5],
-    #     [0.8, 0.5],
-    #     [1, 0.5]
-    # ])
+    # Big bar
     def generate_bar_points(n_sections, scale=1.0, translate=numpy.array([0.0, 0.0])):
         top = numpy.array([-2,1])
         bottom = numpy.array([-2,0])
+        bottom_2 = numpy.array([-2,-1])
         offset = numpy.array([1,0])
 
         return numpy.concatenate(
-            #[[top + offset * i, bottom + offset * i] for i in range(n_sections + 2)]
-            [[top + offset * i] for i in range(n_sections + 2)]
+            [[top + offset * i, bottom + offset * i, bottom_2 + offset * i] for i in range(n_sections + 2)]
+            #[[top + offset * i] for i in range(n_sections + 2)]
         ) * scale + translate
 
     def generate_springs(n_sections):
-        offset = numpy.array([1, 1])
+        offset = numpy.array([3, 3])
         section = numpy.array([
-            [0,1]
-            # [0, 2],
-            # [1, 3],
-            # [2, 3]
 
-            # [0, 3],
-           # [2, 3],
-            # [1, 2],
-            # [1, 3]
+            [0, 3],
+            [0, 4],
+            [1, 5],
+            [1, 4],
+            [3, 4],
+            [4, 5],
+            [2, 5],
+            [1, 3],
+            [2, 4]
+
         ])
 
-        return numpy.concatenate([[[0,1]], numpy.concatenate([section + offset * i for i in range(n_sections + 1)]) ])
+        return numpy.concatenate([[[0,1], [1, 2]], numpy.concatenate([section + offset * i for i in range(n_sections + 1)]) ])
 
-    sections = 1
+    # def generate_bar_points(n_sections, scale=1.0, translate=numpy.array([0.0, 0.0])):
+    #     top = numpy.array([-2,1])
+    #     bottom = numpy.array([-2,0])
+    #     bottom_2 = numpy.array([-2,-1])
+    #     offset = numpy.array([1,0])
+
+    #     return numpy.concatenate(
+    #         #[[top + offset * i, bottom + offset * i, bottom_2 + offset * i] for i in range(n_sections + 2)]
+    #         [[top + offset * i] for i in range(n_sections + 2)]
+    #     ) * scale + translate
+
+    # def generate_springs(n_sections):
+    #     offset = numpy.array([1, 1])
+    #     section = numpy.array([
+
+    #         [0, 1],
+
+    #     ])
+
+    #     return numpy.concatenate([section + offset * i for i in range(n_sections +1 )])
+
+    sections = 10
     starting_points = generate_bar_points(sections)
     
     n_points = len(starting_points) # Num points
     q_initial = starting_points.flatten()
 
-    pinned_points = numpy.array([0, 2])
+    pinned_points = numpy.array([0, 1])
     q_mask = numpy.ones(n_points * d, dtype=bool)
     q_mask[numpy.concatenate([pinned_points * d + i for i in range(d)])] = False
+    q_mask_inv = numpy.logical_not(q_mask)
 
     springs = generate_springs(sections)
 
     n_springs = len(springs)
+
     P_matrices = construct_P_matrices(springs, n_points, d)
     
     all_spring_offsets = (B @ (P_matrices @ q_initial).T).T
     rest_lens = numpy.linalg.norm(all_spring_offsets, axis=1) * starting_stretch
 
     mass_matrix = numpy.identity(len(q_initial)) * mass # Mass matrix
-    # mass_matrix[0][0] =  10e10
-    # mass_matrix[1][1] = 10e10
-    # mass_matrix[-1][-1] = 10e10
-    # mass_matrix[-2][-2] = 10e10
     external_forces = numpy.array([0, -9.8] * n_points)
 
     # Assemble offsets
@@ -138,22 +155,6 @@ def main():
     def potential_energy(q_k, q_k1):
         q_tilde = 0.5 * (q_k + q_k1)
 
-        # mask = numpy.ones(n_points*2)
-        # mask[0:4] = 0.0
-        # q_tilde = q_tilde * mask
-        # mask = numpy.abs(mask - 1.0)
-        # mask[0:4] = q_initial[0:4]
-        # q_tilde += mask
-        
-
-        # sum = 0.0
-        # for i in range(len(rest_lens)): # TODO I might be able to do this simply with @ (see all_spring_offsets)
-        #     P_i = P_matrices[i]
-        #     l_i = rest_lens[i]
-
-        #     d_q_tilde_i_sq = q_tilde.T @ P_i.T @ B.T @ B @ P_i @ q_tilde
-        #     sum += (1.0 - 1.0 / l_i * numpy.sqrt(d_q_tilde_i_sq)) ** 2
-
         # Optimized but ugly version
         sum = numpy.sum(
             (1.0 - (1.0 / rest_lens) * numpy.sqrt(numpy.einsum('ij,ij->i', q_tilde.T @ P_matrices.transpose((0,2,1)) @ B.T, (B @ P_matrices @ q_tilde)))) ** 2
@@ -161,7 +162,12 @@ def main():
 
         return 0.5 * spring_const * sum
 
-    def potential(q):
+    def neg_potential(u):
+        # q = numpy.array(q_sub_pinned)
+        # for i in pinned_points:
+        #     q = numpy.insert(q, i*d, q_initial[i*d])
+        #     q = numpy.insert(q, i*d+1, q_initial[i*d+1])
+        q = q_initial + u
         return -potential_energy(q, q)
 
     def find_natural_modes():
@@ -174,18 +180,28 @@ def main():
         # print(len(springs))
 
         #K = -autograd.jacobian(compute_internal_forces)(q_initial) * 1.0 / mass
-        M_inv = numpy.linalg.inv(mass_matrix)
+       
         # M_inv[0][0] = 0.0
         # M_inv[1][1] = 0.0
         # M_inv[2][2] = 0.0
         # M_inv[3][3] = 0.0
 
-        K = M_inv @ autograd.jacobian(autograd.grad(potential))(q_initial) #* 1.0/mass
-        print (K)
-        # print(K)
-        w, v = numpy.linalg.eig(K)
+        force_fn = autograd.grad(neg_potential)
+        K = autograd.jacobian(force_fn)(numpy.zeros(n_points*2)) #* 1.0/mass
+        print(K)
+        # K = K[2:-2,2:-2]
+        # K = numpy.linalg.inv(K)
+        print(K)
+        import scipy
+
+        w, v = scipy.linalg.eig(K)
         
+        idx = w.argsort()[::-1]   
+        w = w[idx]
+        v = v[:,idx]
         print(w)
+
+        # print(w)
         # print()
         # print(v)
         # print(w[0])
@@ -194,12 +210,12 @@ def main():
         i = 0
         while True:
             # if numpy.abs(w[i]) > 0.0001:
-            render(numpy.real_if_close(v[i] * 0.5 + q_initial), springs, save_frames=False)
+            render(numpy.real_if_close(v[i] + q_initial), springs, save_frames=False)
             import time
-            time.sleep(1)
+            time.sleep(0.3)
             i = (i + 1) % len(v)
-    # find_natural_modes()
-    # exit()
+    find_natural_modes()
+    exit()
 
     def discrete_lagrangian(q_k, q_k1):
         return kinetic_energy(q_k, q_k1) - potential_energy(q_k, q_k1)
@@ -211,15 +227,11 @@ def main():
     # Want D1_Ld + D2_Ld = 0
     # Do root finding
     def DEL(new_q, cur_q, prev_q):
-        # SUPER hacky way of adding constrained points
-        for i in pinned_points:
-            new_q = numpy.insert(new_q, i*d, q_initial[i*d])
-            new_q = numpy.insert(new_q, i*d+1, q_initial[i*d+1])
 
         res = D1_Ld(cur_q, new_q) + D2_Ld(prev_q, cur_q) + mass_matrix @ external_forces
 
         # SUPER hacky way of adding constrained points
-        return res[q_mask]
+        return res
 
     jac_DEL = autograd.jacobian(DEL, 0)
 
@@ -237,18 +249,12 @@ def main():
     prev_q = q_initial
     cur_q = q_initial
     while True:
-        # SUPER hacky
-        constrained_q = cur_q[q_mask]
 
-        sol = optimize.root(DEL, constrained_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
-        #sol = optimize.minimize(DEL_objective, constrained_q, args=(cur_q, prev_q), method='L-BFGS-B', jac=autograd.jacobian(DEL_objective, 0))#, options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
+
+        sol = optimize.root(DEL, cur_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL)# Note numerical jacobian seems much faster
+        #sol = optimize.minimize(DEL_objective, cur_q, args=(cur_q, prev_q), method='L-BFGS-B', jac=autograd.jacobian(DEL_objective, 0))#, options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
         prev_q = cur_q
         cur_q = sol.x
-
-        # SUPER hacky way of adding constrained points
-        for i in pinned_points:
-            cur_q = numpy.insert(cur_q, i*d, q_initial[i*d])
-            cur_q = numpy.insert(cur_q, i*d+1, q_initial[i*d+1])
 
         render(cur_q, springs, save_frames=False)
 
