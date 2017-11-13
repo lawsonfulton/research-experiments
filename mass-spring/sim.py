@@ -26,7 +26,7 @@ def main():
     # Simulation Parameters
     spring_const = 10.0 # Technically could vary per spring
     h = 0.005
-    mass = 0.05
+    mass = 0.001
     # Initial conditions
     starting_stretch = 1#0.6
 
@@ -36,39 +36,79 @@ def main():
     #     [0.8, 0.5],
     #     [1, 0.5]
     # ])
-    def generate_bar_points(n_sections, scale=1.0, translate=numpy.array([0.0, 0.0])):
-        top = numpy.array([-2,1])
-        bottom = numpy.array([-2,0])
-        offset = numpy.array([1,0])
+    #Line
+    # def generate_bar_points(n_sections, scale=1.0, translate=numpy.array([0.0, 0.0])):
+    #     top = numpy.array([-2,1])
+    #     bottom = numpy.array([-2,0])
+    #     offset = numpy.array([1,0])
 
-        return numpy.concatenate(
-            #[[top + offset * i, bottom + offset * i] for i in range(n_sections + 2)]
-            [[top + offset * i] for i in range(n_sections + 2)]
+    #     return numpy.concatenate(
+    #         #[[top + offset * i, bottom + offset * i] for i in range(n_sections + 2)]
+    #         [[top + offset * i] for i in range(n_sections + 2)]
+    #     ) * scale + translate
+
+    # def generate_springs(n_sections):
+    #     offset = numpy.array([1, 1])
+    #     section = numpy.array([
+    #         [0,1]
+    #         # [0, 2],
+    #         # [1, 3],
+    #         # [2, 3]
+
+    #         # [0, 3],
+    #        # [2, 3],
+    #         # [1, 2],
+    #         # [1, 3]
+    #     ])
+
+    #     return numpy.concatenate([[[0,1]], numpy.concatenate([section + offset * i for i in range(n_sections + 1)]) ])
+    # Big bar
+    def generate_bar_points(n_sections, scale=1.0, translate=numpy.array([0.0, 0.0])):
+        h = 1
+        top = numpy.array([-2,h])
+        bottom = numpy.array([-2,0])
+        bottom_2 = numpy.array([-2,-h])
+        offset = numpy.array([1,0])
+        h_offset = numpy.array([0,0])
+
+        k = n_sections + 2
+        points = numpy.concatenate(
+            [[top + offset * i + h_offset * (1 - i/k), bottom + offset * i, bottom_2 + offset * i - h_offset * (1 - i/k)] for i in range(k)]
+            #[[top + offset * i] for i in range(n_sections + 2)]
         ) * scale + translate
 
-    def generate_springs(n_sections):
-        offset = numpy.array([1, 1])
-        section = numpy.array([
-            [0,1]
-            # [0, 2],
-            # [1, 3],
-            # [2, 3]
+        theta = -numpy.pi / 2
 
-            # [0, 3],
-           # [2, 3],
-            # [1, 2],
-            # [1, 3]
+        rotMatrix = numpy.array([[numpy.cos(theta), -numpy.sin(theta)], 
+                                 [numpy.sin(theta),  numpy.cos(theta)]])
+
+        return (rotMatrix @ points.T).T
+
+    def generate_springs(n_sections):
+        offset = numpy.array([3, 3])
+        section = numpy.array([
+
+            [0, 3],
+            [0, 4],
+            [1, 5],
+            [1, 4],
+            [3, 4],
+            [4, 5],
+            [2, 5],
+            [1, 3],
+            [2, 4]
+
         ])
 
-        return numpy.concatenate([[[0,1]], numpy.concatenate([section + offset * i for i in range(n_sections + 1)]) ])
+        return numpy.concatenate([[[0,1], [1, 2]], numpy.concatenate([section + offset * i for i in range(n_sections + 1)]) ])
 
-    sections = 1
+    sections = 4
     starting_points = generate_bar_points(sections)
     
     n_points = len(starting_points) # Num points
     q_initial = starting_points.flatten()
 
-    pinned_points = numpy.array([0, 2])
+    pinned_points = numpy.array([0, 1, 2])
     q_mask = numpy.ones(n_points * d, dtype=bool)
     q_mask[numpy.concatenate([pinned_points * d + i for i in range(d)])] = False
 
@@ -208,13 +248,20 @@ def main():
     D2_Ld = autograd.grad(discrete_lagrangian, 1)  # (q_t-1, q_t) -> R^N*d
 
 
+    current_frame = 0
+    def pinned_postions(i):
+        x = q_initial[i*d] + numpy.cos(current_frame/200 * 2 * numpy.pi) - 1
+        y = q_initial[i*d+1]
+
+        return x, y
     # Want D1_Ld + D2_Ld = 0
     # Do root finding
     def DEL(new_q, cur_q, prev_q):
         # SUPER hacky way of adding constrained points
         for i in pinned_points:
-            new_q = numpy.insert(new_q, i*d, q_initial[i*d])
-            new_q = numpy.insert(new_q, i*d+1, q_initial[i*d+1])
+            x, y = pinned_postions(i)
+            new_q = numpy.insert(new_q, i*d, x)
+            new_q = numpy.insert(new_q, i*d+1, y)
 
         res = D1_Ld(cur_q, new_q) + D2_Ld(prev_q, cur_q) + mass_matrix @ external_forces
 
@@ -231,7 +278,7 @@ def main():
     ### Simulation
     q_history = []
     save_freq = 1000
-    current_frame = 0
+    
     output_path = 'configurations'
 
     prev_q = q_initial
@@ -247,8 +294,9 @@ def main():
 
         # SUPER hacky way of adding constrained points
         for i in pinned_points:
-            cur_q = numpy.insert(cur_q, i*d, q_initial[i*d])
-            cur_q = numpy.insert(cur_q, i*d+1, q_initial[i*d+1])
+            x, y = pinned_postions(i)
+            cur_q = numpy.insert(cur_q, i*d, x)
+            cur_q = numpy.insert(cur_q, i*d+1, y)
 
         render(cur_q, springs, save_frames=False)
 

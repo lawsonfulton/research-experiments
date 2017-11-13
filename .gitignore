@@ -5,7 +5,8 @@
 *.h5
 *.pickle
 *.stl
-
+*.jpg
+configurations
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

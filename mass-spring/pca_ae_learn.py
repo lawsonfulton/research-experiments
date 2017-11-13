@@ -3,9 +3,6 @@ import datetime
 import pickle
 import numpy
 
-import keras
-from keras.layers import Input, Dense
-from keras.models import Model, load_model
 
 # import viz
 
@@ -43,28 +40,96 @@ def main():
     test_sample_size = 1000
 
     print("Loading training data...")
-    data = load_data('mass-spring-bar-configurations_small.pickle')
+    data = numpy.array(load_data('mass-spring-bar-configurations_small.pickle'))
+    numpy_base_verts = data[0]
     numpy.random.shuffle(data)
-    
-    train_data = numpy.array(data[:training_sample_size])
-    test_data = numpy.array(data[training_sample_size:training_sample_size+test_sample_size])
+    print(data)
+    ### PCA Version
+    numpy_displacements_sample = data - numpy_base_verts # should convert this to offsets?
 
-    print("Done loading: ", time.time()-start_time)
+    print("Doing PCA...")
+    num_verts = len(data[0]) // 2
+    num_samples = training_sample_size
+    train_size = num_samples
+    test_size = num_samples
+    test_data = numpy_displacements_sample[:test_size] * 1.0
+    #numpy.random.shuffle(numpy_displacements_sample)
+
+    train_data = numpy_displacements_sample[0:train_size]
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=10)
+    pca.fit(train_data.reshape((train_size, 2 * num_verts)))
+
+    # def encode(q):
+    #     return pca.transform(numpy.array([q.flatten() - numpy_base_verts]))[0]
+
+    # def decode(z):
+    #     return (numpy_base_verts + pca.inverse_transform(numpy.array([z]))[0]).reshape((num_verts, 3))
+
+    # print(numpy.equal(test_data[0].flatten().reshape((len(test_data[0]),3)), test_data[0]))
+    # print(encode(test_data[0]))
+
+    test_data_pca_encoded = pca.transform(test_data.reshape(test_size, 2 * num_verts))
+    test_data_pca_decoded = (numpy_base_verts + pca.inverse_transform(test_data_pca_encoded)).reshape(test_size, num_verts, 2)
+    ### End of PCA version
+
+
+
+    start_time = time.time()
     
+    train_size = num_samples
+    test_size = num_samples
+    test_data = test_data_pca_encoded[:test_size]
+    
+    # numpy.random.shuffle(test_data_pca_encoded)
+    # train_data = numpy_verts_sample[test_size:test_size+train_size]
+    train_data = test_data_pca_encoded[0:train_size]
+
+    mean = numpy.mean(train_data, axis=0)
+    std = numpy.std(train_data, axis=0)
+    
+    mean = numpy.mean(train_data)
+    std = numpy.std(train_data)
+
+    s_min = numpy.min(train_data)
+    s_max = numpy.max(train_data)
+    
+
+    def normalize(data):
+        return numpy.nan_to_num((data - mean) / std)
+        # return numpy.nan_to_num((train_data - s_min) / (s_max - s_min))
+    def denormalize(data):
+        return data * std + mean
+        # return data * (s_max - s_min) + s_min
+
+    train_data = normalize(train_data)
+    test_data = normalize(test_data)
+
+    # print(train_data)
+    # print(mean)
+    # print(std)
+    # exit()
     # this is the size of our encoded representations
     encoded_dim = 3
 
     # Single autoencoder
     # initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.01, seed=5)
     # bias_initializer = initializer
-    activation = 'relu' #keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
+    import keras
+    from keras.layers import Input, Dense
+    from keras.models import Model, load_model
+
+    activation = keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
     
     input = Input(shape=(len(train_data[0]),))
-    output = Dense(200, activation=activation)(input)
-    output = Dense(100, activation=activation)(output)
+    output = input
+    
+    output = Dense(512, activation=activation)(output)
+    output = Dense(64, activation=activation)(output)
     output = Dense(encoded_dim, activation=activation, name="encoded")(output)
-    output = Dense(100, activation=activation)(output)
-    output = Dense(200, activation=activation)(output)
+    output = Dense(64, activation=activation)(output)
+    output = Dense(512, activation=activation)(output)
+    
     output = Dense(len(train_data[0]), activation='linear')(output)#'linear',)(output) # First test seems to indicate no change on output with linear
 
     autoencoder = Model(input, output)
@@ -78,14 +143,71 @@ def main():
     model_start_time = time.time()
     autoencoder.fit(
         train_data, train_data,
-        epochs=200,
-        batch_size=training_sample_size,
+        epochs=3000,
+        batch_size=num_samples,
         shuffle=True,
         validation_data=(test_data, test_data)
     )
 
-    output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
-    autoencoder.save(output_path)
+    # output_path = 'trained_models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
+    # autoencoder.save(output_path)
+
+    print("Total model time: ", time.time() - model_start_time)
+
+    # Display
+    
+    ae_decoded_samples = denormalize(autoencoder.predict(test_data))
+    #ae_decoded_samples = autoencoder.predict(test_data) * std + mean
+
+    test_data_decoded = (numpy_base_verts + pca.inverse_transform(ae_decoded_samples)).reshape(test_size, num_verts, 2)
+
+    ### Vanilla
+    # train_data = numpy.array(data[:training_sample_size])
+    # test_data = numpy.array(data[training_sample_size:training_sample_size+test_sample_size])
+
+    # print("Done loading: ", time.time()-start_time)
+    
+    # # this is the size of our encoded representations
+    # encoded_dim = 3
+
+    # # Single autoencoder
+    # # initializer = keras.initializers.RandomUniform(minval=0.0, maxval=0.01, seed=5)
+    # # bias_initializer = initializer
+    # activation = 'linear'#keras.layers.advanced_activations.LeakyReLU(alpha=0.3) #'relu'
+    # alpha = 0.3
+
+    # input = Input(shape=(len(train_data[0]),))
+    # output = Dense(200, activation=activation)(input)
+    # output = keras.layers.advanced_activations.LeakyReLU(alpha=alpha)(output)
+    # output = Dense(100, activation=activation)(output)
+    # output = keras.layers.advanced_activations.LeakyReLU(alpha=alpha)(output)
+    # output = Dense(encoded_dim, activation=activation, name="encoded")(output)
+    # output = Dense(100, activation=activation)(output)
+    # output = keras.layers.advanced_activations.LeakyReLU(alpha=alpha)(output)
+    # output = Dense(200, activation=activation)(output)
+    # output = keras.layers.advanced_activations.LeakyReLU(alpha=alpha)(output)
+    # output = Dense(len(train_data[0]), activation='linear')(output)#'linear',)(output) # First test seems to indicate no change on output with linear
+
+    # autoencoder = Model(input, output)
+
+    # optimizer = keras.optimizers.Adam(lr=0.001, beta_1=0.9, beta_2=0.999, epsilon=1e-08, decay=0)
+    # autoencoder.compile(
+    #     optimizer=optimizer,
+    #     loss='mean_squared_error'
+    # )
+    
+    # model_start_time = time.time()
+    # autoencoder.fit(
+    #     train_data, train_data,
+    #     epochs=20,
+    #     batch_size=200,#training_sample_size,
+    #     shuffle=True,
+    #     validation_data=(test_data, test_data)
+    # )
+
+    # output_path = 'models/' + datetime.datetime.now().strftime("%I %M%p %B %d %Y") + '.h5'
+    # autoencoder.save(output_path)
+    ### Vanilla
 
     print("Total model time: ", time.time() - model_start_time)
 

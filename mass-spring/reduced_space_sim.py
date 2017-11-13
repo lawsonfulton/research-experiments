@@ -7,6 +7,12 @@ from scipy import optimize
 import pickle
 
 from viz import render
+
+
+## CPU is probably faster for forward pass
+import os
+os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"   # see issue #152
+os.environ["CUDA_VISIBLE_DEVICES"] = ""
 from learning import load_autoencoder
 
 
@@ -19,7 +25,7 @@ def construct_P_matrices(springs, n_points, d):
 
 def main():
     ### Setup
-    autoencoder, encoder, decoder = load_autoencoder('models/2.7e-06.h5')
+    autoencoder, encoder, decoder = load_autoencoder('models/12 17PM November 08 2017.h5')#models/2.7e-06.h5')
     def encode(q):
         return encoder.predict(numpy.array([q]))[0].astype(numpy.float64)
 
@@ -163,14 +169,14 @@ def main():
     cur_z = z_initial
     while True:
 
-        # sol = optimize.root(latent_DEL, cur_z, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
+        #sol = optimize.root(latent_DEL, cur_z, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
         sol = optimize.minimize(latent_DEL_objective, cur_z, args=(cur_q, prev_q), method='L-BFGS-B', options={'gtol': 1e-6, 'eps': 1e-06, 'disp': False})
         prev_z = cur_z
         cur_z = sol.x
 
         prev_q = cur_q
         cur_q = decode(cur_z)
-        render(cur_q, springs, save_frames=True)
+        render(cur_q * 10, springs, save_frames=True)
 
         # if save_freq > 0:
         #     current_frame += 1

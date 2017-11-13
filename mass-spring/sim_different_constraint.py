@@ -26,7 +26,8 @@ def main():
     # Simulation Parameters
     spring_const = 10.0 # Technically could vary per spring
     h = 0.005
-    mass = 0.05
+    mass = 0.05ral_modes()
+    # exit()
     # Initial conditions
     starting_stretch = 1#0.6
 
@@ -214,8 +215,8 @@ def main():
             import time
             time.sleep(0.3)
             i = (i + 1) % len(v)
-    find_natural_modes()
-    exit()
+    # find_natural_modes()
+    # exit()
 
     def discrete_lagrangian(q_k, q_k1):
         return kinetic_energy(q_k, q_k1) - potential_energy(q_k, q_k1)
