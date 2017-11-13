@@ -182,26 +182,37 @@ def main():
 
         return res.T @ res
 
+    current_frame = 0
+    def pinned_postions(i):
+        x = q_initial[i*d]
+        y = q_initial[i*d+1]
+
+        return x, y
+
     ### Simulation
     q_history = []
     save_freq = 1
-    current_frame = 0
-    output_path = 'pca_configurations.pickle'
+
+    output_path = 'full_configurations.pickle'
 
     prev_q = q_initial
     cur_q = q_initial
     prev_z = z_initial
     cur_z = z_initial
     while True:
-
-        # sol = optimize.root(latent_DEL, cur_z, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
-        sol = optimize.minimize(latent_DEL_objective, cur_z, args=(cur_q, prev_q), method='L-BFGS-B')
-        prev_z = cur_z
-        cur_z = sol.x
-
+        constrained_q = cur_q[q_mask]
+        sol = optimize.root(DEL, constrained_q, method='broyden1', args=(cur_q, prev_q))#, jac=jac_DEL) # Note numerical jacobian seems much faster
+        #sol = optimize.minimize(latent_DEL_objective, cur_z, args=(cur_q, prev_q), method='L-BFGS-B')
         prev_q = cur_q
-        cur_q = decode(cur_z)
-        render(cur_q * 10, springs, save_frames=True)
+        cur_q = sol.x
+
+        # SUPER hacky way of adding constrained points
+        for i in pinned_points:
+            x, y = pinned_postions(i)
+            cur_q = numpy.insert(cur_q, i*d, x)
+            cur_q = numpy.insert(cur_q, i*d+1, y)
+
+        render(cur_q*10, springs, save_frames=False)
 
         if save_freq > 0:
             current_frame += 1

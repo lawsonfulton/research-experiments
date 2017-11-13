@@ -164,9 +164,9 @@ def main():
 
     ### Simulation
     q_history = []
-    save_freq = 1000
+    save_freq = 1
     current_frame = 0
-    output_path = 'configurations'
+    output_path = 'pca_ae_configurations.pickle'
 
     prev_q = q_initial
     cur_q = q_initial
@@ -183,13 +183,13 @@ def main():
         cur_q = decode(cur_z)
         render(cur_q * 10, springs, save_frames=True)
 
-        # if save_freq > 0:
-        #     current_frame += 1
-        #     q_history.append(cur_q)
+        if save_freq > 0:
+            current_frame += 1
+            q_history.append(cur_q)
 
-        #     if current_frame % save_freq == 0:
-        #         with open(output_path, 'wb') as f:
-        #             pickle.dump(q_history, f)
+            if current_frame % save_freq == 0:
+                with open(output_path, 'wb') as f:
+                    pickle.dump(q_history, f)
 
 
 def decompose_ae(autoencoder):
@@ -329,7 +329,7 @@ def train_model():
     model_start_time = time.time()
     autoencoder.fit(
         train_data, train_data,
-        epochs=800,#800,
+        epochs=3000,#800,
         batch_size=num_samples,
         shuffle=True,
         validation_data=(test_data, test_data)
