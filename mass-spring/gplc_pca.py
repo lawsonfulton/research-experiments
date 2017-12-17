@@ -194,7 +194,7 @@ def main():
         A = new_q - 2.0 * cur_q + prev_q
         F_ext = mass_matrix @ gravity_accel
 
-        L = 0.5 * A.T @ mass_matrix @ A + h * potential_energy(new_q, new_q) - h * A @ F_ext
+        L = 0.5 * A.T @ mass_matrix @ A + h * potential_energy(new_q, new_q) - h * A.T @ F_ext
 
         return L
 
