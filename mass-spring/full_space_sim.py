@@ -168,7 +168,7 @@ def main():
 
         # SUPER hacky way of adding constrained points
         return res[q_mask]
-
+zz
     jac_DEL = autograd.jacobian(DEL, 0)
 
     def latent_DEL(new_z, cur_q, prev_q):

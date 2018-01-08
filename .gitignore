@@ -6,6 +6,16 @@
 *.pickle
 *.stl
 *.jpg
+*.dmat
+*.edge
+*.ele
+*.face
+*.mesh
+*.smesh
+*.node
+*.zip
+*.pb
+*.hdf5
 configurations
 
 # Byte-compiled / optimized / DLL files

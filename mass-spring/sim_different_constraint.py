@@ -26,7 +26,7 @@ def main():
     # Simulation Parameters
     spring_const = 10.0 # Technically could vary per spring
     h = 0.005
-    mass = 0.05ral_modes()
+    mass = 0.05
     # exit()
     # Initial conditions
     starting_stretch = 1#0.6
