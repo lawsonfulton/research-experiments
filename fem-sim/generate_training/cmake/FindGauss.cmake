@@ -57,8 +57,8 @@ set(Gauss_INCLUDE_DIRS  ${Gauss_EXT_INCLUDE_DIRS}
                         ${LIBIGL_INCLUDE_PATH}
                         ${EIGEN3_INCLUDE_DIR}
                         ${SolversLinear_SOURCE_DIR}/include
-                        ${Optimization_SOURCE_DIR}/include 
-                        ${Base_SOURCE_DIR}/include 
+                        ${Optimization_SOURCE_DIR}/include
+                        ${Base_SOURCE_DIR}/include
                         ${Core_SOURCE_DIR}/include
                         ${ParticleSystem_SOURCE_DIR}/include
                         ${FEM_SOURCE_DIR}/include
@@ -79,6 +79,7 @@ if(APPLE)
 endif(APPLE)
 
 #not sure how to do this more elegantly so for now manual list of cases
+MESSAGE(USING PARDISO ${USE_PARDISO} and open mp ${USE_OPENMP})
 if(USE_PARDISO)
   add_definitions(-DGAUSS_PARDISO)
 endif(USE_PARDISO)
@@ -92,7 +93,7 @@ endif(USE_SPECTRA)
 #define the initUI macro
 include(${UI_SOURCE_DIR}/UISetup.txt)
 
-#Currently for xcode builds 
+#Currently for xcode builds
 #libraries
 set(Gauss_LIB_DIR_DEBUG ${Gauss_EXT_LIBDIR} ${Gauss_ROOT_DIR}/build/lib/Debug)
 set(Gauss_LIB_DIR_RELEASE ${Gauss_EXT_LIBDIR} ${Gauss_ROOT_DIR}/build/lib/)
@@ -107,4 +108,3 @@ set(Gauss_LIBS  libBase.a
 message(WARNING "INCLUDES: " ${Gauss_INCLUDE_DIRS})
 message(WARNING "DEBUG LIB DIR: " ${Gauss_LIB_DIR_DEBUG})
 message(WARNING "DEBUG LIBS: " ${Gauss_LIBS})
-
