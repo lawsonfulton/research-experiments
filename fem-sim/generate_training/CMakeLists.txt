@@ -13,16 +13,16 @@ set( CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_BINARY_DIR}/lib )
 set(CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/cmake)
 
 #json
-include_directories("/home/lawson/Workspace/json/src")
+include_directories("/home/vismay/json/src")
 
 #Gauss
-set(LIBIGL_INCLUDE_PATH "/home/lawson/Workspace/libigl/include") # Weird that I have to do this for GAUSS seperately
+set(LIBIGL_INCLUDE_PATH "/home/vismay/libigl/include") # Weird that I have to do this for GAUSS seperately
 set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -fPIC)
-set(Gauss_ROOT_DIR "/home/lawson/Workspace/GAUSS/")
+set(Gauss_ROOT_DIR "/home/vismay/GAUSS/")
 find_package(Gauss REQUIRED)
 
 #Libigl
-set(LIBIGL_INCLUDE_DIR "/home/lawson/Workspace/libigl/include")
+set(LIBIGL_INCLUDE_DIR "/home/vismay/libigl/include")
 option(LIBIGL_USE_STATIC_LIBRARY "Use libigl as static library" OFF)
 option(LIBIGL_WITH_ANTTWEAKBAR      "Use AntTweakBar"    OFF)
 option(LIBIGL_WITH_CGAL             "Use CGAL"           OFF)
@@ -58,7 +58,7 @@ include_directories(${Gauss_INCLUDE_DIRS})
 #Example codes
 link_directories(${Gauss_LIB_DIR_RELEASE})
 add_executable(GenerateTrainingData ${GenerateTrainingData_SOURCE_DIR}/src/interactive.cpp)
-target_link_libraries(GenerateTrainingData ${Gauss_LIBS} ${UI_LIBS} -lpthread igl::core igl::viewer)
+target_link_libraries(GenerateTrainingData ${Gauss_LIBS} ${UI_LIBS} -lpthread igl::core igl::viewer -lgomp)
 
 # add_executable(ViewData ${GenerateTrainingData_SOURCE_DIR}/src/cpp/viewData.cpp)
 # target_link_libraries(ViewData ${Gauss_LIBS} ${UI_LIBS})
