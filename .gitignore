@@ -16,6 +16,7 @@
 *.zip
 *.pb
 *.hdf5
+*.off
 configurations
 
 # Byte-compiled / optimized / DLL files
