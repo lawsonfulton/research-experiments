@@ -17,6 +17,7 @@
 *.pb
 *.hdf5
 *.off
+*.obj
 configurations
 
 # Byte-compiled / optimized / DLL files
