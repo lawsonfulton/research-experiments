@@ -6,6 +6,7 @@
 *.pickle
 *.stl
 *.jpg
+*.png
 *.dmat
 *.edge
 *.ele
